@@ -281,14 +281,24 @@ bulp_namespace_parse_file       (BulpNamespace *ns,
     {
       return BULP_FALSE;
     }
+  parse_rv = bulp_namespace_parse_data (ns, filename, data_length, data, error);
+  free (data);
+  return parse_rv;
+}
 
+static bulp_bool
+bulp_namespace_parse_data       (BulpNamespace *ns,
+                                 const char    *filename,
+                                 size_t         data_length,
+                                 const uint8_t *data,
+                                 BulpError    **error)
+{
   // tokenize
   unsigned lineno = 1;
   TokenizeResult tokenize_result = tokenize (filename, data_length, data, &lineno);
   if (tokenize_result.failed != NULL)
     {
       *error = tokenize_result.failed;
-      free (file_data);
       return BULP_FALSE;
     }
 

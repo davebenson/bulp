@@ -109,6 +109,7 @@ union BulpFormat {
   BulpFormatBits v_bits;
   BulpFormatStruct v_struct;
   BulpFormatUnion v_union;
+  BulpFormatOptional v_optional;
 };
 
 BulpFormat *bulp_format_from_binary_data (size_t length,
@@ -133,6 +134,7 @@ BulpFormat *bulp_format_try_string_generic(unsigned n_bits, /* 8,16,32,64 */
                                           BulpStringType type,
                                           BulpStringLengthType length_type,
                                           BulpError **error);
+BulpFormat *bulp_format_get_optional     (BulpFormat *subtype);
 
 BulpFormat *bulp_format_new_struct       (unsigned n_members,
                                           BulpStructMember *members);
