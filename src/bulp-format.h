@@ -195,6 +195,11 @@ bulp_bool      bulp_namespace_foreach          (BulpNamespace *ns,
                                                 BulpNamespaceForeachFunc func,
                                                 void func_data);
 
+bulp_bool      bulp_namespace_parse_file       (BulpNamespace *ns,
+                                                const char    *filename,
+                                                BulpError    **error);
+
+
 // private
 extern BulpFormatInt bulp_format_ints_global[14];
 extern BulpFormatString bulp_format_strings_global[4];
