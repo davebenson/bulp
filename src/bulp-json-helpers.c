@@ -1,9 +1,17 @@
 #include "bulp-json-helpers.h"
 
+static inline bulp_bool
+is_octal_digit (char d)
+{
+  return '0' <= d && d < '8';
+}
+
 unsigned 
 bulp_json_find_backslash_sequence_length (size_t data_length, const uint8_t *data,
-                                unsigned start_offset,
-                                BulpError **error)
+                                          unsigned start_offset,
+                                          const char *filename,
+                                          unsigned *lineno_inout,
+                                          BulpError **error)
 {
   assert(data[start_offset] == '\\');
   if (start_offset + 1 >= data_length)
@@ -12,21 +20,35 @@ bulp_json_find_backslash_sequence_length (size_t data_length, const uint8_t *dat
       BULP_ERROR_SET_C_LOCATION (*error);
       return 0;
     }
-  switch (data[1]) {
+  switch (data[start_offset + 1]) {
     case 'b': case 'f': case 'n': case 'r': case 't':
     case '\'': case '"': case '/':
-    case '\n':
       return 2;
+    case '\n':
+      *lineno_inout += 1;
+      return 2;
+
+    case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7':
+      if (start_offset + 2 >= data_length && is_octal_digit (data[start_offset+2]))
+        {
+          if (start_offset + 3 >= data_length && is_octal_digit (data[start_offset+3]))
+            return 4;
+          else
+            return 3;
+        }
+      else
+        return 2;
+          
     case 'u':
       if (start_offset + 5 >= data_length)
         {
-          *error = bulp_error_new_premature_eof ();
+          *error = bulp_error_new_premature_eof (filename, *lineno_inout);
           BULP_ERROR_SET_C_LOCATION (*error);
           return 0;
         }
       return 6;
     default:
-      *error = bulp_error_new_invalid_backslash_sequence ();
+      *error = bulp_error_new_invalid_backslash_sequence (filename, *lineno_inout);
       BULP_ERROR_SET_C_LOCATION (*error);
       return 0;
   }
@@ -36,25 +58,28 @@ unsigned
 bulp_json_find_quoted_string_length (size_t data_length,
                                      const uint8_t *data,
                                      unsigned start_offset,
+                                     const char *filename,
+                                     unsigned *lineno_inout,
                                      BulpError **error)
 {
   char quote_char = data[start_offset];
+  unsigned start_line_no = *lineno_inout;
   assert (quote_char == '"' || quote_char == '\'');
 
   unsigned offset = start_offset + 1;
   while (offset < data_length)
     {
-
       switch (data[offset])
         {
           case '\n':
-            *error = ...;
-            ... raw, literal newlines not allowed
+            *error = bulp_error_parse_bad_newline ("newlines not allowed in strings", filename, *lineno_inout);
             break;
           case '\\':
             {
-              unsigned seqlen = find_backslash_sequence_length (data_length, data, offset, error);
-              ...
+              unsigned seq_len = bulp_json_find_backslash_sequence_length (data_length, data, offset, filename, lineno_inout, error);
+              if (seq_len == 0)
+                return 0;
+              offset += seq_len;
             }
             break;
           case '\'': case '"':
@@ -67,9 +92,19 @@ bulp_json_find_quoted_string_length (size_t data_length,
             break;
 
           default:
-            offset++;
+            if (data[offset] < 128)
+              {
+                offset++;
+              }
+            else
+              {
+                /* validate utf8 */
+                ...
+              }
             break;
         }
     }
+  *error = bulp_error_new_unterminated_string (filename, start_line_no);
+  return 0;
 }
 
