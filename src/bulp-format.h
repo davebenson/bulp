@@ -2,12 +2,53 @@
 typedef union BulpFormat BulpFormat;
 typedef struct BulpNamespace BulpNamespace;
 
+typedef enum {
+  BULP_FORMAT_TYPE_BINARY_DATA,
+  BULP_FORMAT_TYPE_PACKED,
+  BULP_FORMAT_TYPE_STRING,
+  BULP_FORMAT_TYPE_INT,
+  BULP_FORMAT_TYPE_FLOAT,
+  BULP_FORMAT_TYPE_STRUCT,
+  BULP_FORMAT_TYPE_UNION,
+  BULP_FORMAT_TYPE_OPTIONAL
+} BulpFormatType;
+
+typedef struct {
+  size_t    (*get_packed_size) (BulpFormat *format,
+                                void *native_data);
+  size_t    (*pack)            (BulpFormat *format,
+                                void *native_data,
+                                uint8_t *packed_data_out);
+  size_t    (*pack_to)         (BulpFormat *format,
+                                void *native_data,
+                                BulpBuffer *out);
+  bulp_bool (*unpack)          (BulpFormat *format,
+                                size_t packed_len,
+                                const uint8_t *packed_data,
+                                void *native_data_out,
+                                BulpMemPool *pool,
+                                BulpError **error);
+
+  void      (*packed_to_json)  (BulpFormat  *format,
+                                ...);
+  void      (*json_to_packed)  (BulpFormat  *format,
+                                ...);
+} BulpFormatVFuncs;
+
 typedef struct {
   BulpFormatType type;
-  BulpFormatVTable *vtable;
   unsigned ref_count;
+  BulpFormatVFuncs vfuncs;
+
   BulpNamespace *canonical_ns;
   const char *canonical_name;
+
+  /* native (ie equivalent to generated C code) representation */
+  size_t c_alignof;
+  size_t c_sizeof;
+  const char *c_typename;               // mixed case - first letter capital
+  const char *c_func_prefix;            // ie all lowercase with underscores
+  const char *c_macro_prefix;           // ie all uppercase with underscores
 } BulpFormatBase;
 
 /* short int long
@@ -19,10 +60,15 @@ typedef struct {
  */
 typedef struct {
   BulpFormatBase base;
-  unsigned max_byte_size;       /* 1,2,4,8 */
+  unsigned byte_size;       /* 1,2,4,8 */
   bulp_bool is_signed;
   bulp_bool is_b128;               /* variable-length encoded; otherwise, fixed-length little-endian */
 } BulpFormatInt;
+
+typedef struct {
+  BulpFormatBase base;
+  BulpFormatFloatType float_type;
+} BulpFormatFloat;
 
 typedef struct {
   BulpFormatBase base;
@@ -54,12 +100,39 @@ typedef struct BulpFormatArray {
 typedef struct {
   const char *name;
   unsigned n_bits;
+
 } BulpPackedElement;
+
+typedef struct {
+  /* the remaining fields are computed by bulp_format_packed_new() or by
+   * the machine-generated code. */
+  unsigned packed_bit_offset;                   // XXX: version dependent, do not use
+
+  /* machine-dependent */
+  unsigned native_bit_offset;
+  uint8_t native_word_size;                     // 1,2,4
+} BulpPackedElementComputedInfo;
+
+unsigned bulp_packed_element_get_native   (BulpPackedElement *elt,
+                                           BulpPackedElementComputedInfo *info,
+                                           const void        *native_instance);
+unsigned bulp_packed_element_set_native   (BulpPackedElement *elt,
+                                           BulpPackedElementComputedInfo *info,
+                                           void              *native_instance,
+                                           unsigned           value);
+#if 0
+/* versioning?  i think we need to skip this */
+unsigned bulp_packed_element_get_packed (const void        *packed_data,
+                                                    BulpFormatPackedElement *elt);
+unsigned bulp_packed_element_set_packed       (void              *packed_data,
+                                        BulpFormatPackedElement *elt,
+                                        unsigned           value);
+#endif
 
 struct BulpFormatPacked {
   BulpFormatBase base;
   unsigned n_elements;
-  BulpFormatPackedElement *elements;
+  BulpPackedElement *elements;
 };
 
 typedef struct {
@@ -106,8 +179,11 @@ union BulpFormat {
   BulpFormatPacked v_packed;
   BulpFormatString v_string;
   BulpFormatInt v_int;
-  BulpFormatBits v_bits;
+  BulpFormatFloat v_float;
   BulpFormatStruct v_struct;
+  BulpFormatUnion v_union;
+  BulpFormatOptional v_optional;
+  BulpFormatObject v_object;
   BulpFormatUnion v_union;
   BulpFormatOptional v_optional;
 };
@@ -159,6 +235,9 @@ BulpFormat *bulp_format_new_union        (unsigned n_cases,
 
 #define bulp_format_byte        bulp_format_uint8
 
+#define bulp_format_float32     ((BulpFormat *) (bulp_format_floats_global[0])
+#define bulp_format_float64     ((BulpFormat *) (bulp_format_floats_global[1])
+
 #define bulp_format_ascii       ((BulpFormat *) (&bulp_format_strings_global[0]))
 #define bulp_format_string      ((BulpFormat *) (&bulp_format_strings_global[1]))
 #define bulp_format_ascii0      ((BulpFormat *) (&bulp_format_strings_global[2]))
@@ -182,16 +261,28 @@ bulp_bool      bulp_namespace_add_format       (BulpNamespace *ns,
                                                 BulpFormat    *format,
                                                 bulp_bool      is_canonical_ns);
 
+typedef enum {
+  BULP_NAMESPACE_ENTRY_SUBNAMESPACE,
+  BULP_NAMESPACE_ENTRY_FORMAT
+} BulpNamespaceEntryType;
+
+typedef struct {
+  BulpNamespaceEntryType type;
+  union {
+    BulpNamespace *v_namespace;
+    BulpFormat *v_format;
+  } info;
+} BulpNamespaceEntry;
 bulp_bool      bulp_namespace_query_1          (BulpNamespace *ns,
                                                 const char    *name,
-                                                BulpNamespaceQueryResult *out);
+                                                BulpNamespaceEntry *out);
 bulp_bool      bulp_namespace_query            (BulpNamespace *ns,
                                                 const char    *dotted_name,
-                                                BulpNamespaceQueryResult *out);
+                                                BulpNamespaceEntry *out);
 
 typedef bulp_bool (*BulpNamespaceForeachFunc) (BulpNamespace *ns,
                                                const char *name,
-                                               BulpNamespaceQueryResult *value,
+                                               BulpNamespaceEntry *value,
                                                void       *data);
 bulp_bool      bulp_namespace_foreach          (BulpNamespace *ns,
                                                 BulpNamespaceForeachFunc func,

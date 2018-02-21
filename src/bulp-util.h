@@ -1,4 +1,9 @@
 
+typedef int bulp_bool;
+#define BULP_FALSE 0
+#define BULP_TRUE  1
+
+
 /* BULP_PRINTF_LIKE(format_idx,arg_idx): Advise the compiler
  * that the arguments should be like printf(3); it may
  * optionally print type warnings.  */

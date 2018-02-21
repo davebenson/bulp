@@ -1,3 +1,4 @@
+#include "bulp.h"
 
 #if 0
 namespace foo.bar;
@@ -29,7 +30,7 @@ typedef enum {
   TOKEN_TYPE_DEFAULT,
   TOKEN_TYPE_VOID,
 
-  TOKEN_TYPE_BAREWORD
+  TOKEN_TYPE_BAREWORD,
 
   TOKEN_TYPE_DOT,
   TOKEN_TYPE_COLON,
@@ -259,6 +260,8 @@ parse_tokens (BulpNamespace *toplevel_ns,
       case TOKEN_TYPE_PACKED:
         ...
       case TOKEN_TYPE_UNION:
+        ...
+      case TOKEN_TYPE_MESSAGE:
         ...
       default:
         SET_ERROR (...);

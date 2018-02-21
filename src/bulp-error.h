@@ -8,6 +8,7 @@ typedef enum {
 
 } BulpErrorCode;
 
+typedef struct BulpError BulpError;
 struct BulpError {
   BulpErrorCode code;
   char *message;
