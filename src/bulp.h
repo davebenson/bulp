@@ -3,15 +3,22 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <assert.h>
 
+#include "bulp-defs.h"
 #include "bulp-error.h"
 #include "bulp-util.h"
 #include "bulp-buffer.h"
+#include "bulp-mem-pool.h"
+#include "bulp-object.h"
 
 #include "bulp-format.h"                        /* also includes namespace support */
 
-#include "bulp-io.h"                            /* Producer (aka Reader) and Consumer (aka Writer) support */
-#include "bulp-file-formats.h"
+#include "bulp-filter.h"
+#include "bulp-mapper.h"
+#include "bulp-reader.h"
+#include "bulp-writer.h"
+#include "bulp-file-format-burp.h"
 #include "bulp-stream-api.h"
 
 // internals

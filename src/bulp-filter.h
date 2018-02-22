@@ -1,10 +1,12 @@
+typedef struct BulpFilter BulpFilter;
+typedef struct BulpFilterClass BulpFilterClass;
 
 struct _BulpFilterClass {
   BulpClass base_class;
   bulp_bool (*filter)(BulpFilter *filter, size_t len, const uint8_t *data);
 };
 
-struct _BulpFilter {
+struct BulpFilter {
   BulpObject base_instance;
   BulpFormat *format;
 };

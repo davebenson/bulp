@@ -1,20 +1,40 @@
 /* invariant:  if a buffer.size==0, then first_frag/last_frag == NULL.
    corollary:  if a buffer.size==0, then the buffer is using no memory. */
+// NO LONGER TRUE:  a buffer may contain an empty ON_STACK buffer
 
-typedef struct _BulpBuffer BulpBuffer;
-typedef struct _BulpBufferFragment BulpBufferFragment;
+typedef struct BulpBuffer BulpBuffer;
+typedef struct BulpBufferFragment BulpBufferFragment;
+typedef struct BulpBufferFragmentGeneric BulpBufferFragmentGeneric;
 
-struct _BulpBufferFragment
+#include <stdarg.h>
+
+typedef enum
 {
-  BulpBufferFragment    *next;
-  uint8_t              *buf;
-  unsigned              buf_max_size;	/* allocation size of buf */
-  unsigned              buf_start;	/* offset in buf of valid data */
-  unsigned              buf_length;	/* length of valid data in buf; != 0 */
-  
-  bulp_bool              is_foreign;
-  BulpDestroyNotify      destroy;
-  void                 *destroy_data;
+  BULP_BUFFER_FRAGMENT_ONE_ALLOC,
+  BULP_BUFFER_FRAGMENT_GENERIC,
+  BULP_BUFFER_FRAGMENT_ON_STACK,
+  BULP_BUFFER_FRAGMENT_DESTROYED                /* for ON_STACK only */
+} BulpBufferFragmentType;
+
+struct BulpBufferFragment
+{
+  BulpBufferFragmentType  fragment_type;
+  BulpBufferFragment     *next;
+  uint8_t                *buf;
+  unsigned                buf_max_size;	/* allocation size of buf */
+  unsigned                buf_start;	/* offset in buf of valid data */
+  unsigned                buf_length;	/* length of valid data in buf; != 0 */
+};
+
+
+typedef void (*BulpBufferFragmentDestroy)(void *destroy_data,
+                                          BulpBufferFragmentGeneric *fragment);
+
+struct BulpBufferFragmentGeneric
+{
+  BulpBufferFragment   base_fragment;
+  BulpBufferFragmentDestroy destroy;
+  void                *destroy_data;
 };
 
 struct _BulpBuffer
@@ -29,6 +49,11 @@ struct _BulpBuffer
 
 
 void     bulp_buffer_init                (BulpBuffer       *buffer);
+
+/* memory_size should be sizeof(BulpBufferFragment) + estimated_data_space_needed */
+void     bulp_buffer_init_on_stack       (BulpBuffer       *buffer,
+                                          size_t            memory_size,
+                                          void             *memory);
 
 unsigned bulp_buffer_read                (BulpBuffer    *buffer,
                                          unsigned      max_length,
@@ -55,12 +80,12 @@ void     bulp_buffer_append              (BulpBuffer    *buffer,
                                          unsigned      length,
                                          const void   *data);
 
-BULP_INLINE_FUNC void bulp_buffer_append_small(BulpBuffer    *buffer, 
+BULP_INLINE void bulp_buffer_append_small(BulpBuffer    *buffer, 
                                          unsigned      length,
                                          const void   *data);
 void     bulp_buffer_append_string       (BulpBuffer    *buffer, 
                                          const char   *string);
-BULP_INLINE_FUNC void bulp_buffer_append_byte(BulpBuffer    *buffer, 
+BULP_INLINE void bulp_buffer_append_byte(BulpBuffer    *buffer, 
                                          uint8_t       byte);
 void      bulp_buffer_append_byte_f      (BulpBuffer    *buffer, 
                                          uint8_t       byte);
@@ -77,12 +102,12 @@ void     bulp_buffer_append_string0      (BulpBuffer    *buffer,
 void     bulp_buffer_append_foreign      (BulpBuffer    *buffer,
 					 unsigned      length,
                                          const void   *data,
-					 BulpDestroyNotify destroy,
+					 BulpBufferFragmentGeneric destroy,
 					 void         *destroy_data);
 
 void     bulp_buffer_printf              (BulpBuffer    *buffer,
 					 const char   *format,
-					 ...) BULP_GNUC_PRINTF(2,3);
+					 ...) BULP_PRINTF_LIKE(2,3);
 void     bulp_buffer_vprintf             (BulpBuffer    *buffer,
 					 const char   *format,
 					 va_list       args);
@@ -125,7 +150,7 @@ int      bulp_buffer_writev_len          (BulpBuffer *read_from,
 		                         int              fd,
 		                         unsigned         max_bytes);
 /* returns TRUE iff all the data was written.  'read_from' is blank. */
-bulp_boolean bulp_buffer_write_all_to_fd  (BulpBuffer       *read_from,
+bulp_bool bulp_buffer_write_all_to_fd  (BulpBuffer       *read_from,
                                          int              fd,
                                          BulpError       **error);
 int      bulp_buffer_readv               (BulpBuffer       *write_to,
@@ -162,7 +187,7 @@ typedef enum {
   BULP_BUFFER_DUMP_EXECUTABLE = (1<<5),
 } BulpBufferDumpFlags;
 
-bulp_boolean bulp_buffer_dump (BulpBuffer          *buffer,
+bulp_bool bulp_buffer_dump (BulpBuffer          *buffer,
                              const char         *filename,
                              BulpBufferDumpFlags  flags,
                              BulpError          **error);
@@ -175,7 +200,7 @@ unsigned bulp_buffer_fragment_peek (BulpBufferFragment *fragment,
                                    unsigned           offset,
                                    unsigned           length,
                                    void              *buf);
-bulp_boolean bulp_buffer_fragment_advance (BulpBufferFragment **frag_inout,
+bulp_bool bulp_buffer_fragment_advance (BulpBufferFragment **frag_inout,
                                          unsigned           *offset_inout,
                                          unsigned            skip);
 
@@ -192,7 +217,7 @@ void bulp_buffer_fragment_free (BulpBufferFragment *fragment);
 
 
 #if BULP_CAN_INLINE || defined(BULP_IMPLEMENT_INLINES)
-BULP_INLINE_FUNC void bulp_buffer_append_small(BulpBuffer    *buffer, 
+BULP_INLINE void bulp_buffer_append_small(BulpBuffer    *buffer, 
                                          unsigned      length,
                                          const void   *data)
 {
@@ -211,7 +236,7 @@ BULP_INLINE_FUNC void bulp_buffer_append_small(BulpBuffer    *buffer,
   else
     bulp_buffer_append (buffer, length, data);
 }
-BULP_INLINE_FUNC void bulp_buffer_append_byte(BulpBuffer    *buffer, 
+BULP_INLINE void bulp_buffer_append_byte(BulpBuffer    *buffer, 
                                             uint8_t       byte)
 {
   BulpBufferFragment *f = buffer->last_frag;

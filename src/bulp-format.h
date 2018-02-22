@@ -65,9 +65,15 @@ typedef struct {
   bulp_bool is_b128;               /* variable-length encoded; otherwise, fixed-length little-endian */
 } BulpFormatInt;
 
+typedef enum
+{
+  BULP_FLOAT_TYPE_FLOAT32,
+  BULP_FLOAT_TYPE_FLOAT64,
+} BulpFloatType;
+
 typedef struct {
   BulpFormatBase base;
-  BulpFormatFloatType float_type;
+  BulpFloatType float_type;
 } BulpFormatFloat;
 
 typedef struct {
@@ -129,27 +135,28 @@ unsigned bulp_packed_element_set_packed       (void              *packed_data,
                                         unsigned           value);
 #endif
 
-struct BulpFormatPacked {
+typedef struct BulpFormatPacked {
   BulpFormatBase base;
   unsigned n_elements;
   BulpPackedElement *elements;
-};
+} BulpFormatPacked;
 
 typedef struct {
   const char *name;
   BulpFormat *case_format;
 } BulpUnionCase;
 
-struct BulpFormatUnion {
+typedef struct BulpFormatUnion {
   BulpFormatBase base;
   size_t n_cases;
   BulpUnionCase *cases;
-};
+} BulpFormatUnion;
 
 typedef struct {
   unsigned start_version;
   unsigned end_version;
 } BulpVersionRange;
+
 
 typedef struct {
   int n_ranges;
@@ -161,16 +168,33 @@ typedef struct {
 typedef struct {
   const char *name;
   BulpFormat *format;
-  BulpVersioningInfo *versioning_info;
+  BulpMemberVersioningInfo *versioning_info;
 } BulpStructMember;
 #define BULP_STRUCT_MEMBER_IS_EXTANT(member) \
   ((member)->versioning_info == NULL || !(member)->versioning_info->ignored)
 
-struct BulpFormatStruct {
+typedef struct BulpFormatStruct {
   BulpFormatBase base;
   size_t n_members;
   BulpStructMember *members;
-};
+} BulpFormatStruct;
+
+typedef struct {
+  uint32_t id;
+  const char *name;
+  BulpFormat *format;
+} BulpObjectMember;
+
+typedef struct {
+  BulpFormatBase base;
+  size_t n_members;
+  BulpStructMember *members;
+} BulpFormatObject;
+
+typedef struct {
+  BulpFormatBase base;
+  BulpFormat *subformat;
+} BulpFormatOptional;
 
 union BulpFormat {
   BulpStringType type;
@@ -182,9 +206,7 @@ union BulpFormat {
   BulpFormatFloat v_float;
   BulpFormatStruct v_struct;
   BulpFormatUnion v_union;
-  BulpFormatOptional v_optional;
   BulpFormatObject v_object;
-  BulpFormatUnion v_union;
   BulpFormatOptional v_optional;
 };
 
@@ -261,6 +283,10 @@ bulp_bool      bulp_namespace_add_format       (BulpNamespace *ns,
                                                 BulpFormat    *format,
                                                 bulp_bool      is_canonical_ns);
 
+unsigned       bulp_namespace_get_version      (BulpNamespace *ns);
+void           bulp_namespace_set_version      (BulpNamespace *ns,
+                                                unsigned       version);
+
 typedef enum {
   BULP_NAMESPACE_ENTRY_SUBNAMESPACE,
   BULP_NAMESPACE_ENTRY_FORMAT
@@ -286,7 +312,7 @@ typedef bulp_bool (*BulpNamespaceForeachFunc) (BulpNamespace *ns,
                                                void       *data);
 bulp_bool      bulp_namespace_foreach          (BulpNamespace *ns,
                                                 BulpNamespaceForeachFunc func,
-                                                void func_data);
+                                                void *func_data);
 
 bulp_bool      bulp_namespace_parse_file       (BulpNamespace *ns,
                                                 const char    *filename,

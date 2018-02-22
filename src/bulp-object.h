@@ -4,9 +4,8 @@ typedef enum {
   BULP_CLASS_TYPE_WRITER,
 } BulpClassType;
 
-struct BulpClassInfo {
-  BulpClassType class_type;
-};
+typedef struct BulpClass BulpClass;
+typedef struct BulpObject BulpObject;
 
 struct BulpClass {
   const char *class_name;

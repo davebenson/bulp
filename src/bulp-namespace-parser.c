@@ -1,12 +1,41 @@
 #include "bulp.h"
+#include <stdlib.h>
+#include <string.h>
+
+typedef struct BulpImportEntry BulpImportEntry;
+typedef struct BulpImports BulpImports;
+
+typedef enum {
+  BULP_IMPORT_ENTRY_TYPE_EXACT,
+  BULP_IMPORT_ENTRY_TYPE_ALIAS
+} BulpImportEntryType;
+
+struct BulpImportEntry {
+  BulpImportEntryType type;
+  BulpNamespace *ns;
+  char *as;             /* may be NULL */
+};
+
+struct BulpImports {
+  /// private: use API below so that we can optimize later
+  unsigned n_entries;
+  BulpImportEntry *entries;
+  unsigned entries_alloced;
+};
+
 
 #if 0
 namespace foo.bar;
+
+import foo.baz.Wombat;
+import foo.qoo as QOO;
 
 struct X {
   int32 a { version < 5, void };
   float b { version < 4, default 2.0 };
   double c;
+  Wombat w;
+  QOO.y qy;
 }
 
 union Y {
@@ -46,10 +75,45 @@ typedef enum {
   TOKEN_TYPE_EQEQ,
   TOKEN_TYPE_GT,
   TOKEN_TYPE_GTEQ,
+  TOKEN_TYPE_QUESTION_MARK,
 
   TOKEN_TYPE_NUMBER,                    // js conpatible
   TOKEN_TYPE_STRING,                    // js compatible
 } TokenType;
+
+static const char *token_type_to_string (TokenType type)
+{
+#define WRITE_CASE(shortname) case TOKEN_TYPE_##shortname: return #shortname
+  switch (type)
+  {
+  WRITE_CASE(NAMESPACE);
+  WRITE_CASE(STRUCT);
+  WRITE_CASE(UNION);
+  WRITE_CASE(PACKED);
+  WRITE_CASE(VERSION);
+  WRITE_CASE(DEFAULT);
+  WRITE_CASE(VOID);
+  WRITE_CASE(BAREWORD);
+  WRITE_CASE(DOT);
+  WRITE_CASE(COLON);
+  WRITE_CASE(SEMICOLON);
+  WRITE_CASE(LBRACE);
+  WRITE_CASE(RBRACE);
+  WRITE_CASE(LBRACKET);
+  WRITE_CASE(RBRACKET);
+  WRITE_CASE(LPAREN);
+  WRITE_CASE(RPAREN);
+  WRITE_CASE(LT);
+  WRITE_CASE(LTEQ);
+  WRITE_CASE(EQEQ);
+  WRITE_CASE(GT);
+  WRITE_CASE(GTEQ);
+  WRITE_CASE(NUMBER);
+  WRITE_CASE(STRING);
+  default: return "*bad token-type*";
+  }
+#undef WRITE_CASE
+}
 
 typedef struct {
   TokenType type;
@@ -65,6 +129,23 @@ typedef struct {
   //unsigned *line_offsets;
 } TokenizeResult;
 
+static inline bulp_bool
+is_bareword_char (uint8_t c)
+{
+  return ('a' <= c && c <= 'z')
+      || ('0' <= c && c <= '9')
+      || c == '_'
+      || ('A' <= c && c <= 'Z');
+}
+
+static unsigned
+find_bareword_length (size_t len, const uint8_t *data, size_t offset)
+{
+  unsigned rv = 1;
+  while (offset + rv < len && is_bareword_char (data[offset+rv]))
+    rv++;
+  return rv;
+}
 
 /* --- json-compatible tokens --- */
 
@@ -75,7 +156,7 @@ tokenize (const char    *filename,
           const uint8_t *data,
           unsigned      *lineno_inout)
 {
-  TokenizeResult rv = {0,};
+  TokenizeResult rv = {NULL, 0, NULL};
   
   unsigned tokens_alloced = 128;
   Token *tokens = malloc (sizeof (Token) * tokens_alloced);
@@ -87,7 +168,7 @@ tokenize (const char    *filename,
       tmp.type = TOKEN_TYPE_ ## shortname;                             \
       tmp.byte_length = (len);                                         \
       tmp.byte_offset = offset;                                        \
-      tmp.line_no = *line_no;                                          \
+      tmp.line_no = *lineno_inout;                                     \
       APPEND_TMP_TO_TOKENS();                                          \
       offset += tmp.byte_length;                                       \
     }while(0)
@@ -147,7 +228,7 @@ tokenize (const char    *filename,
         case '0': case '1': case '2': case '3': case '4':
         case '5': case '6': case '7': case '8': case '9':
           {
-            unsigned nlen = find_number_length (length, data, offset, &rv.failed);
+            unsigned nlen = bulp_json_find_number_length (length, data, offset, filename, lineno_inout, &rv.failed);
             if (nlen == 0)
               goto error_cleanup;
             APPEND_TMP_TO_TOKENS_AND_ADVANCE_OFFSET(NUMBER, nlen);
@@ -165,7 +246,7 @@ tokenize (const char    *filename,
             tmp.type = TOKEN_TYPE_BAREWORD;
             tmp.byte_offset = offset;
             tmp.byte_length = find_bareword_length (length, data, offset);
-            switch (bw_len) {
+            switch (tmp.byte_length) {
               case 4:
                 if (memcmp (data + offset, "void", 4) == 0) tmp.type = TOKEN_TYPE_VOID;
                 break;
@@ -190,7 +271,7 @@ tokenize (const char    *filename,
 
         case '"':
           {
-            unsigned nlen = find_quoted_string_length (length, data, offset, &rv.failed);
+            unsigned nlen = bulp_json_find_quoted_string_length (length, data, offset, filename, lineno_inout, &rv.failed);
             if (nlen == 0)
               goto error_cleanup;
             APPEND_TMP_TO_TOKENS_AND_ADVANCE_OFFSET(STRING, nlen);
@@ -198,7 +279,8 @@ tokenize (const char    *filename,
           }
 
         default:
-          ...
+          rv.failed = bulp_error_new_unexpected_character (data[offset], filename, *lineno_inout);
+          goto error_cleanup;
       }
     }
 
@@ -211,14 +293,165 @@ tokenize (const char    *filename,
 error_cleanup:
   assert(rv.failed != NULL);
   free (tokens);
-  free (line_offsets);
   return rv;
 }
 
-/* ------------------------- Tokens to JSON ------------------------- */
-...
-
 /* ------------------------- Parsing ------------------------- */
+static unsigned
+parse_dotted_name_from_tokens (const char * filename,
+                               unsigned     n_tokens,
+                               Token       *tokens,
+                               BulpError **error)
+{
+  unsigned rv = 1;
+  while (rv + 2 < n_tokens
+       && tokens[rv].type == TOKEN_TYPE_DOT)
+    {
+      if (tokens[rv+1].type != TOKEN_TYPE_BAREWORD)
+        {
+          *error = bulp_error_new_parse (filename, tokens[rv+1].line_no, "expected bareword, got %s", token_type_to_string(tokens[rv+1].type));
+          return 0;
+        }
+     rv += 2;
+   }
+  return rv;
+}
+
+static unsigned
+parse_format (BulpImports *imports,
+              const char *filename,
+              unsigned n_tokens,
+              Token *tokens,
+              BulpFormat **format_out,
+              BulpError **error)
+{
+  unsigned tokens_used = 0;
+
+  // parse dotted name into components.
+  unsigned n_dotted_name_tokens = parse_dotted_name_from_tokens (filename, n_tokens, tokens, error);
+  if (n_dotted_name_tokens == 0)
+    return 0;
+  assert(n_dotted_name_tokens % 2 == 1);
+  unsigned n_names = (n_dotted_name_tokens + 1) / 2;
+
+  BulpFormat *cur_format = NULL;
+
+  // Parse base format (which is always a bareword).
+  if (n_names == 1)
+    {
+      // search namespaces in order
+      cur_format = bulp_imports_lookup_1 (imports, ...);
+      if (cur_format == NULL)
+        {
+          ...
+          return 0;
+        }
+      ...
+    }
+  else if (n_names == 2 && imports_is_alias (imports, file_data, &tokens[0]))
+    {
+      // handle formats under an alias, e.g. the format referred to by F.x after
+      //    import foo.bar as F;
+      ...
+    }
+  else
+    {
+      // exact global namespace (for now)
+      ...
+    }
+
+  // handle [] or ? suffixes
+  while (tokens_used < n_tokens)
+    {
+      switch (tokens[tokens_used].type)
+        {
+          case TOKEN_TYPE_LBRACKET:
+            ...
+          case TOKEN_TYPE_QUESTION_MARK:
+            ...
+          default:
+            goto done_scanning_suffixes;
+        }
+    }
+done_scanning_suffixes:
+
+  *format_out = fmt;
+  return tokens_used;
+}
+
+static unsigned
+parse_struct_member (BulpImports *imports,
+                     const char *filename,
+                     unsigned n_tokens,
+                     Token *tokens,
+                     BulpStructMember *member_out,
+                     BulpError **error)
+{
+  BulpFormat *format;
+}
+
+static unsigned
+parse_struct (const char *filename,
+              BulpNamespace *ns,
+              const uint8_t *binary_data,
+              unsigned n_tokens, Token *tokens,
+              BulpError **error)
+{
+  unsigned token_at = 0;
+  assert(tokens[0].type == TOKEN_TYPE_STRUCT);
+  if (token_at + 1 >= n_tokens || tokens[token_at+1].type == TOKEN_TYPE_BAREWORD)
+    {
+      *error = bulp_error_new_parse (filename, tokens[token_at].line_no, "expected structure name");
+      goto error_cleanup;
+    }
+  if (token_at + 2 >= n_tokens || tokens[token_at+2].type == TOKEN_TYPE_LBRACE)
+    {
+      *error = bulp_error_new_parse (filename, tokens[token_at+1].line_no, "expected '%c'", BULP_LBRACE_CHAR);
+      goto error_cleanup;
+    }
+  unsigned members_alloced = 4;
+  BulpStructMember *members = malloc(sizeof(BulpStructMember) * members_alloced);
+  unsigned n_members = 0;
+  BulpStructMember member;
+  token_at += 3;
+  while (token_at < n_tokens && tokens[token_at].type != TOKEN_TYPE_RBRACE)
+    {
+      if (tokens[token_at].type == TOKEN_TYPE_SEMICOLON)
+        {
+          token_at++;
+          continue;
+        }
+      unsigned mn = parse_struct_member(filename, n_tokens - token_at, tokens + token_at, &member, &error);
+      if (mn == 0)
+        goto error_cleanup;
+      if (n_members == members_alloced)
+        {
+          members_alloced *= 2;
+          members = realloc (members, sizeof(BulpStructMember) * members_alloced);
+        }
+      members[n_members++] = member;
+    }
+  if (token_at == n_tokens)
+    {
+      *error = bulp_error_new_premature_eof(...);
+      goto structure_error_cleanup;
+    }
+  token_at++;
+
+  BulpFormat *fmt = bulp_format_new_struct (n_members, members);
+  for (unsigned k = 0; k < n_members; k++)
+    free (members[k].name);
+  bulp_namespace_add_with_length_take_format (ns, ...)
+  return token_at;
+
+error_cleanup:
+  for (unsigned k = 0; k < n_members; k++)
+    {
+      free (members[k].name);
+    }
+  free (members);
+  return 0;
+}
 static bulp_bool
 parse_tokens (BulpNamespace *toplevel_ns,
               const char *filename,
@@ -234,39 +467,63 @@ parse_tokens (BulpNamespace *toplevel_ns,
 
   if (tokens[0].type != TOKEN_TYPE_NAMESPACE)
     {
-      SET_ERROR(bulp_error_new_parse (...));
+      *error = bulp_error_new_parse (filename, tokens[0].line_no,
+                              "expected 'namespace'");
       goto error_cleanup;
     }
-
-  unsigned ns_n_tokens = parse_dotted_name_from_tokens (...);
+  unsigned token_at = 1;
+  if (n_tokens < 2 || tokens[1].type != TOKEN_TYPE_BAREWORD)
+rt' --- */
+/* --- Implementations for 'uint'    {
+      *error = bulp_error_new_parse (filename, tokens[0].line_no,
+                              "expected namespace name");
+      goto error_cleanup;
+    }
+  unsigned ns_n_tokens = parse_dotted_name_from_tokens (filename, n_tokens - 1, tokens + 1, error);
   if (ns_n_tokens == 0)
     {
       goto error_cleanup;
     }
-
-  token_at += dotted_name_n_tokens;
+  token_at += ns_n_tokens;
 
   if (tokens[token_at].type != TOKEN_TYPE_SEMICOLON)
     {
-      SET_ERROR(bulp_error_new_parse (...));
+      *error = bulp_error_new_parse (filename, tokens[token_at].line_no, "expected ';'");
       goto error_cleanup;
     }
 
   // parse stanzas 
-  switch (tokens[token_at].type)
+  while (token_at < n_tokens)
     {
-      case TOKEN_TYPE_STRUCT:
-        ...
-      case TOKEN_TYPE_PACKED:
-        ...
-      case TOKEN_TYPE_UNION:
-        ...
-      case TOKEN_TYPE_MESSAGE:
-        ...
-      default:
-        SET_ERROR (...);
-        goto error_cleanup;
-    }
+      switch (tokens[token_at].type)
+        {
+          case TOKEN_TYPE_SEMICOLON:
+            token_at++;
+            break;
+          case TOKEN_TYPE_STRUCT:
+            {
+              unsigned n_subtokens = parse_struct (ns, filename,
+                               n_tokens - token_at, tokens + token_at,
+                               error);
+              if (n_subtokens == 0)
+                goto error_cleanup;
+              token_at += n_subtokens;
+            }
+            break;
+                
+          case TOKEN_TYPE_PACKED:
+            ...
+
+          case TOKEN_TYPE_UNION:
+            ...
+
+          case TOKEN_TYPE_OBJECT:
+            ...
+
+          default:
+            *error = bulp_error_new_... (...);
+            goto error_cleanup;
+        }
 
   return BULP_TRUE;
 }

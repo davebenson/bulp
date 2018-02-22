@@ -5,7 +5,7 @@ typedef enum {
   BULP_ERROR_PREMATURE_EOF,
   BULP_ERROR_JSON_BAD_NUMBER,
   BULP_ERROR_JSON_BAD_STRING,
-
+  BULP_ERROR_PARSE,
 } BulpErrorCode;
 
 typedef struct BulpError BulpError;
@@ -25,6 +25,10 @@ struct BulpError {
 BulpError *bulp_error_out_of_memory (void);
 BulpError *bulp_error_new_unexpected_character (uint8_t c, const char *filename, unsigned lineno);
 BulpError *bulp_error_new_premature_eof (unsigned source_offset);
+BulpError *bulp_error_new_parse (const char *filename,
+                                 unsigned    line_no,
+                                 const char *format,
+                                 ...) BULP_PRINTF_LIKE(3,4);
 BulpError *bulp_error_ref (BulpError *error);
 void       bulp_error_unref (BulpError *error);
 
