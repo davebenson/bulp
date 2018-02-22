@@ -436,9 +436,43 @@ parse_format (BulpImports *imports,
       switch (tokens[tokens_used].type)
         {
           case TOKEN_TYPE_LBRACKET:
-            ...
+            if (tokens_used + 1 == n_tokens)
+              {
+                *error = bulp_error_new_parse (filename, tokens[tokens_used].line_no,
+                                                  "expected '%c' got EOF",
+                                                  BULP_RBRACKET_CHAR);
+                return 0;
+              }
+            else
+              {
+                *error = bulp_error_new_parse (filename, tokens[tokens_used+1].line_no,
+                                                  "expected '%c' got %s",
+                                                  BULP_RBRACKET_CHAR,
+                                                  token_type_to_string (tokens[tokens_used+1].type));
+                return 0;
+              }
+            cur_format = bulp_format_array_of (cur_format);
+            tokens_used += 2;
+            break;
+
           case TOKEN_TYPE_QUESTION_MARK:
-            ...
+            if (cur_format->type == BULP_FORMAT_TYPE_OPTIONAL)
+              {
+                at = str_heap;
+                for (unsigned i = 0; i < n_names - 1; i++)
+                  {
+                    at += tokens[2*i].byte_length;
+                    *at++ = '.';
+                  }
+                *error = bulp_error_new_optional_optional (filename,
+                                                           tokens[tokens_used].line_no,
+                                                           str_heap);
+                return 0;
+              }
+            cur_format = bulp_format_optional_of (cur_format);
+            tokens_used += 1;
+            break;
+
           default:
             goto done_scanning_suffixes;
         }
