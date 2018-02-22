@@ -29,6 +29,9 @@ BulpError *bulp_error_new_parse (const char *filename,
                                  unsigned    line_no,
                                  const char *format,
                                  ...) BULP_PRINTF_LIKE(3,4);
+BulpError *bulp_error_new_unknown_format (const char *filename,
+                                          unsigned    line_no,
+                                          const char *dotted_name);
 BulpError *bulp_error_ref (BulpError *error);
 void       bulp_error_unref (BulpError *error);
 

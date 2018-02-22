@@ -2,16 +2,19 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* --- import stanzas --- */
 typedef struct BulpImportEntry BulpImportEntry;
 typedef struct BulpImports BulpImports;
 
+#if 0
 typedef enum {
-  BULP_IMPORT_ENTRY_TYPE_EXACT,
-  BULP_IMPORT_ENTRY_TYPE_ALIAS
+  BULP_IMPORT_ENTRY_TYPE_EXACT,         // if "as" == NULL
+  BULP_IMPORT_ENTRY_TYPE_ALIAS          // if "as" != NULL
 } BulpImportEntryType;
+#endif
 
 struct BulpImportEntry {
-  BulpImportEntryType type;
+  //BulpImportEntryType type;
   BulpNamespace *ns;
   char *as;             /* may be NULL */
 };
@@ -21,7 +24,67 @@ struct BulpImports {
   unsigned n_entries;
   BulpImportEntry *entries;
   unsigned entries_alloced;
+  BulpNamespace *global_ns;
 };
+
+static BulpFormat *
+bulp_imports_lookup (BulpImports *imports, unsigned n_names, char **names)
+{
+  BulpNamespaceEntry ns_entry;
+
+  // Parse base format (which is always a bareword).
+  if (n_names == 1)
+    {
+      // search namespaces in order
+      for (unsigned i = 0; i < imports->n_entries; i++)
+        if (imports->entries[i].as == NULL
+         && bulp_namespace_query_1 (imports->entries[i].ns, names[0], &ns_entry)
+         && ns_entry.type == BULP_NAMESPACE_ENTRY_FORMAT)
+          return ns_entry.info.v_format;
+      return NULL;
+    }
+
+  if (n_names == 2)
+    {
+      // handle formats under an alias, e.g. the format referred to by F.x after
+      //    import foo.bar as F;
+      for (unsigned i = 0; i < imports->n_entries; i++)
+        if (imports->entries[i].as != NULL
+         && strcmp (imports->entries[i].as, names[0]) == 0)
+          {
+            if (bulp_namespace_query_1 (imports->entries[i].ns, names[1], &ns_entry)
+             && ns_entry.type == BULP_NAMESPACE_ENTRY_FORMAT)
+              return ns_entry.info.v_format;
+              
+          }
+      // fall-through to exact namespace lookup
+    }
+
+  // exact global namespace (for now)
+  BulpNamespace *ns = imports->global_ns;
+  for (unsigned i = 0; i < n_names - 1; i++)
+    {
+      if (!bulp_namespace_query_1 (ns, names[i], &ns_entry))
+        return NULL;
+      if (ns_entry.type == BULP_NAMESPACE_ENTRY_FORMAT)
+        {
+          // got format but expected namespace, but no current way to give error details
+          return NULL;
+        }
+      assert(ns_entry.type == BULP_NAMESPACE_ENTRY_SUBNAMESPACE);
+      ns = ns_entry.info.v_namespace;
+    }
+
+  if (!bulp_namespace_query_1 (ns, names[n_names - 1], &ns_entry))
+    return NULL;
+  if (ns_entry.type == BULP_NAMESPACE_ENTRY_SUBNAMESPACE)
+    {
+      // got namespace but expected format, but no current way to give error details
+      return NULL;
+    }
+  assert(ns_entry.type == BULP_NAMESPACE_ENTRY_FORMAT);
+  return ns_entry.info.v_format;
+}
 
 
 #if 0
@@ -320,6 +383,7 @@ parse_dotted_name_from_tokens (const char * filename,
 static unsigned
 parse_format (BulpImports *imports,
               const char *filename,
+              const uint8_t *data,
               unsigned n_tokens,
               Token *tokens,
               BulpFormat **format_out,
@@ -336,30 +400,36 @@ parse_format (BulpImports *imports,
 
   BulpFormat *cur_format = NULL;
 
-  // Parse base format (which is always a bareword).
-  if (n_names == 1)
+  char **strs = alloca (sizeof (char *) * n_names);
+  unsigned str_heap_len = 0;
+  for (unsigned i = 0; i < n_names; i++)
+    str_heap_len += tokens[2*i].byte_length + 1;
+  char *str_heap = alloca (str_heap_len);
+  char *at = str_heap;
+  for (unsigned i = 0; i < n_names; i++)
     {
-      // search namespaces in order
-      cur_format = bulp_imports_lookup_1 (imports, ...);
-      if (cur_format == NULL)
-        {
-          ...
-          return 0;
-        }
-      ...
-    }
-  else if (n_names == 2 && imports_is_alias (imports, file_data, &tokens[0]))
-    {
-      // handle formats under an alias, e.g. the format referred to by F.x after
-      //    import foo.bar as F;
-      ...
-    }
-  else
-    {
-      // exact global namespace (for now)
-      ...
+      const char *name_start = (char *) data + tokens[2*i].byte_offset;
+      strs[i] = at;
+      memcpy (at, name_start, tokens[2*i].byte_length);
+      at += tokens[2*i].byte_length;
+      *at++ = 0;
     }
 
+  cur_format = bulp_imports_lookup (imports, n_names, strs);
+  if (cur_format == NULL)
+    {
+      // convert to dotted name
+      at = str_heap;
+      for (unsigned i = 0; i < n_names - 1; i++)
+        {
+          at += tokens[2*i].byte_length;
+          *at++ = '.';
+        }
+      
+      // return unknown-format error
+      *error = bulp_error_new_unknown_format (filename, tokens[0].line_no, str_heap);
+      return 0;
+    }
   // handle [] or ? suffixes
   while (tokens_used < n_tokens)
     {
