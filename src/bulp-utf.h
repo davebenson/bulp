@@ -21,6 +21,11 @@ BULP_INLINE unsigned
 bulp_utf8_char_encode (unsigned unicode,
                        uint8_t *bytes_out);
 
+BULP_INLINE unsigned
+bulp_utf8_parse_char (size_t len, const uint8_t *data, uint32_t *codepoint_out, BulpError **error);
+BULP_INLINE unsigned
+bulp_utf8_validate_char (size_t len, const uint8_t *data, BulpError **error);
+
 /* UTF-16 surrogate pair handling.
  * This is required so that we can transform surrogate pairs like:
  *     \ud801\udc37

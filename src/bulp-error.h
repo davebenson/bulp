@@ -22,6 +22,10 @@ struct BulpError {
 };
 
 
+BulpError * bulp_error_new_file_not_found (const char *filename);
+BulpError * bulp_error_new_file_open_error (const char *filename, int errno_value);
+BulpError * bulp_error_new_stat_failed (const char *filename, int errno_value);
+BulpError * bulp_error_new_file_read (int errno_value);
 BulpError *bulp_error_out_of_memory (void);
 BulpError *bulp_error_new_unexpected_character (uint8_t c, const char *filename, unsigned lineno);
 BulpError *bulp_error_new_premature_eof (const char *filename,

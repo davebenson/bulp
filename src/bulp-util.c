@@ -1,7 +1,12 @@
 #include "bulp.h"
 
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 void
 bulp_die (const char *format, ...)
@@ -29,6 +34,7 @@ uint8_t *bulp_util_file_load (const char *filename,
       BULP_ERROR_SET_C_LOCATION (*error);
       return NULL;
     }
+  struct stat stat_buf;
   if (fstat (fd, &stat_buf) < 0)
     {
       *error = bulp_error_new_stat_failed (filename, errno);
@@ -60,7 +66,7 @@ uint8_t *bulp_util_file_load (const char *filename,
     }
   if (amt < total)
     {
-      *error = bulp_error_new_premature_eof ();
+      *error = bulp_error_new_premature_eof (filename, "reading to end of file, despite stat result");
       BULP_ERROR_SET_C_LOCATION (*error);
       free (out);
       close (fd);

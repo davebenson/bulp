@@ -1,4 +1,6 @@
 #include "bulp.h"
+#include <stdlib.h>
+#include <string.h>
 
 static inline bulp_bool
 is_octal_digit (char d)
@@ -99,7 +101,13 @@ bulp_json_find_quoted_string_length (size_t data_length,
             else
               {
                 /* validate utf8 */
-                ...
+                unsigned nbytes = bulp_utf8_validate_char (data_length - offset, data + offset, error);
+                if (nbytes == 0)
+                  {
+                    bulp_error_append_message (*error, ", at %s:%u", filename, *lineno_inout);
+                    return 0;
+                  }
+                offset += nbytes;
               }
             break;
         }
@@ -109,8 +117,9 @@ bulp_json_find_quoted_string_length (size_t data_length,
 }
 
 // return_value.str == NULL implies that an error occurred.
+// this function doesn't validate
 BulpString
-bulp_json_string_to_literal (const char *filename, unsigned line_no, const char *start, const char *end, BulpError **error)
+bulp_json_string_to_literal (const char *start, const char *end)
 {
   const char *at = start;
 
@@ -121,5 +130,79 @@ bulp_json_string_to_literal (const char *filename, unsigned line_no, const char 
   at++;
   end--;
 
-  .... dequote
+  unsigned rv_alloced = 8;
+  BulpString rv = { 0, malloc (rv_alloced) };
+  while (at < end)
+    {
+      char c = *at;
+      if (c == '\\')
+        {
+          if (at + 1 == end)
+            break; // premature eof - ignore
+          switch (at[1])
+            {
+            case 'b': c = '\b'; break;
+            case 'f': c = '\f'; break;
+            case 't': c = '\t'; break;
+            case 'n': c = '\n'; break;
+            case 'r': c = '\r'; break;
+            case '"': c = '"'; break;
+            case '\'': c = '\''; break;
+            case '/': c = '/'; break;
+            case '\\': c = '\\'; break;
+            case 'u':
+              {
+                char hexbuf[5];
+                memcpy (hexbuf, at + 2, 4);
+                hexbuf[4] = 0;
+                unsigned unicode = strtol (hexbuf, NULL, 16);
+                if (bulp_utf16_surrogate_type (unicode) == BULP_UTF16_SURROGATE_HI)
+                  {
+                    assert(at[6] == '\\');
+                    assert(at[7] == 'u');
+                    memcpy (hexbuf, at + 8, 4);
+                    hexbuf[4] = 0;
+                    unsigned lo = strtol (hexbuf, NULL, 16);
+                    unicode = bulp_utf16_surrogates_combine (unicode, lo);
+                    at += 12;
+                  }
+                else
+                  {
+                    at += 6;
+                  }
+                  
+                unsigned utf8len;
+                uint8_t utf8buf[10];
+                utf8len = bulp_utf8_char_encode (unicode, utf8buf);
+
+                while (rv_alloced < rv.length + utf8len + 1)
+                  {
+                    rv_alloced *= 2;
+                    rv.str = realloc (rv.str, rv_alloced);
+                  }
+                memcpy (rv.str + rv.length, utf8buf, utf8len);
+                rv.length += utf8len;
+                break;
+              }
+            case '\n':
+              //line_no++;
+              at += 2;
+              continue;
+            }
+        }
+      else
+        at++;
+
+      // append character 'c' to rv
+      if (rv_alloced <= rv.length + 1)
+        {
+          // double size
+          rv_alloced *= 2;
+          rv.str = realloc (rv.str, rv_alloced);
+        }
+      rv.str[rv.length++] = c;
+
+    }
+  rv.str[rv.length] = '\0';
+  return rv;
 }
