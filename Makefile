@@ -1,3 +1,4 @@
+CFLAGS = -std=c99
 
 lib/libbulp.a: \
 obj/bulp-namespace-parser.o \

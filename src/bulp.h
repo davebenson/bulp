@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <assert.h>
+#include <unistd.h>                     // for ssize_t
 
 #include "bulp-defs.h"
 #include "bulp-error.h"

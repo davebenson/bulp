@@ -24,7 +24,9 @@ struct BulpError {
 
 BulpError *bulp_error_out_of_memory (void);
 BulpError *bulp_error_new_unexpected_character (uint8_t c, const char *filename, unsigned lineno);
-BulpError *bulp_error_new_premature_eof (unsigned source_offset);
+BulpError *bulp_error_new_premature_eof (const char *filename,
+                                         const char *format,
+                                         ...) BULP_PRINTF_LIKE(2,3);
 BulpError *bulp_error_new_parse (const char *filename,
                                  unsigned    line_no,
                                  const char *format,
@@ -38,6 +40,9 @@ BulpError *bulp_error_new_optional_optional (const char *filename,
 BulpError *bulp_error_ref (BulpError *error);
 void       bulp_error_unref (BulpError *error);
 
+void       bulp_error_append_message (BulpError *error,
+                                      const char *format,
+                                      ...) BULP_PRINTF_LIKE(2,3);
 
 #define BULP_ERROR_SET_C_LOCATION(e) do{    \
     (e)->c_filename = __FILE__;             \

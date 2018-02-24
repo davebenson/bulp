@@ -108,3 +108,18 @@ bulp_json_find_quoted_string_length (size_t data_length,
   return 0;
 }
 
+// return_value.str == NULL implies that an error occurred.
+BulpString
+bulp_json_string_to_literal (const char *filename, unsigned line_no, const char *start, const char *end, BulpError **error)
+{
+  const char *at = start;
+
+  // verify and remove start+end quotes
+  assert(at + 2 < end);
+  assert(at[0] == '"' || at[0] == '\'');
+  assert(*(end-1) == at[0]);
+  at++;
+  end--;
+
+  .... dequote
+}

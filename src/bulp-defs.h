@@ -34,3 +34,17 @@ typedef int bulp_bool;
 #define BULP_RBRACE_STR     "}"
 #define BULP_RBRACKET_STR   "]"
 #define BULP_RPAREN_STR     ")"
+
+typedef struct BulpString BulpString;
+struct BulpString
+{
+  unsigned length;                 // in bytes
+  char *str;                       // must be non-NULL, and str[len] must be '\0' (NUL).   UTF-8
+};
+
+typedef struct BulpBinaryData BulpBinaryData;
+struct BulpBinaryData
+{
+  unsigned length;                 // in bytes
+  uint8_t *data;
+};
