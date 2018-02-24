@@ -248,13 +248,13 @@ typedef struct {
   char *name;
   bulp_bool set_value;
   unsigned value_if_set;
-  BulpFormat *format;
+  BulpFormat *field_format;
 } BulpMessageField;
 
 typedef struct {
   char *name;
   uint32_t value;
-  BulpFormat *format;
+  BulpFormat *field_format;
   unsigned native_offset;
 } BulpFormatMessageField;
 
@@ -321,6 +321,8 @@ BulpFormat *bulp_format_new_struct       (unsigned n_members,
                                           BulpStructMember *members);
 BulpFormat *bulp_format_new_union        (unsigned n_cases,
                                           BulpUnionCase    *cases);
+BulpFormat *bulp_format_new_message      (unsigned n_fields,
+                                          BulpMessageField *fields);
 
 BulpFormat *bulp_format_ref              (BulpFormat       *format);
 void        bulp_format_unref            (BulpFormat       *format);
@@ -406,6 +408,13 @@ bulp_bool      bulp_namespace_foreach          (BulpNamespace *ns,
 bulp_bool      bulp_namespace_parse_file       (BulpNamespace *ns,
                                                 const char    *filename,
                                                 BulpError    **error);
+bulp_bool      bulp_namespace_parse_data       (BulpNamespace *ns,
+                                                const char    *pseudo_filename,
+                                                size_t         file_length,
+                                                const uint8_t *file_data,
+                                                BulpError    **error);
+BulpNamespace *bulp_namespace_ref (BulpNamespace *ns);
+void           bulp_namespace_unref (BulpNamespace *ns);
 
 
 // private

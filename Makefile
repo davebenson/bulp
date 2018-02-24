@@ -13,6 +13,9 @@ generated/bulp-config-bit-packing.h: build/compute-bit-packing-strategy
 
 obj/%.o: src/%.c
 	@mkdir -p obj
-	$(CC) -W -Wall -c -o $@ $^
+	$(CC) -W -Wall -c -o $@ $<
 
 obj/bulp-format-bit-packing.o: generated/bulp-config-bit-packing.h
+
+clean:
+	rm -rf obj/*

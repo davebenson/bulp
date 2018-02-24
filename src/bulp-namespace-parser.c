@@ -32,6 +32,14 @@ struct BulpImports {
   unsigned this_ns_version;
 };
 
+static BulpImports *
+bulp_imports_new (BulpNamespace *global_ns)
+{
+  BulpImports *imports = calloc(sizeof(BulpImports), 1);
+  imports->global_ns = bulp_namespace_ref (global_ns);
+  return imports;
+}
+
 static BulpFormat *
 bulp_imports_lookup (BulpImports *imports, unsigned n_names, char **names)
 {
@@ -1338,9 +1346,9 @@ parse_json_value (const char *filename,
               }
             at++;
 
-            BulpFormatMessageField *m;
-            m = bulp_format_message_lookup_by_name (format, name_len, name_start);
-            if (m == NULL)
+            BulpFormatMessageField *mf;
+            mf = bulp_format_message_lookup_by_name (format, name_len, name_start);
+            if (mf == NULL)
               {
                 unsigned nskip = skip_json_value (filename, n_tokens - at, tokens + at, error);
                 if (nskip == 0)
@@ -1352,14 +1360,14 @@ parse_json_value (const char *filename,
             // value (format depends on name)
             unsigned vtok_used = parse_json_value (filename, file_data,
                                          n_tokens - at, tokens + at,
-                                         m->format,
-                                         (char*)value_out + m->native_offset,
+                                         mf->field_format,
+                                         (char*)value_out + mf->native_offset,
                                          error);
             if (vtok_used == 0)
               {
                 bulp_error_append_message (*error, " (in %s::%s)",
                      format->base.canonical_name,
-                     m->name);
+                     mf->name);
                 return 0;
               }
             at += vtok_used;
@@ -1469,7 +1477,7 @@ destruct_parsed_json_value (BulpFormat *format, void *native_value)
 
     case BULP_FORMAT_TYPE_MESSAGE:
       for (unsigned i = 0; i < format->v_message.n_fields; i++)
-        destruct_parsed_json_value (format->v_message.fields[i].format,
+        destruct_parsed_json_value (format->v_message.fields[i].field_format,
                         (char *) native_value + format->v_message.fields[i].native_offset);
       break;
 
@@ -2096,14 +2104,15 @@ error_cleanup:
   return 0;
 }
 
+/// messages
 static unsigned
-parse_union_case    (BulpImports *imports,
-                     const char *filename,
-                     const uint8_t *file_data,
-                     unsigned n_tokens,
-                     Token *tokens,
-                     BulpUnionCase *case_out,
-                     BulpError **error)
+parse_message_field    (BulpImports *imports,
+                        const char *filename,
+                        const uint8_t *file_data,
+                        unsigned n_tokens,
+                        Token *tokens,
+                        BulpMessageField *message_field_out,
+                        BulpError **error)
 {
   BulpFormat *format;
   unsigned fmt_tokens_used = parse_format (imports, filename, file_data, n_tokens, tokens, &format, error);
@@ -2169,25 +2178,25 @@ parse_union_case    (BulpImports *imports,
     }
   tokens_used++;
 
-  case_out->case_format = format;
-  case_out->name = cut_token (file_data, name_tok);
-  case_out->has_value = has_value;
-  case_out->value = value;
+  message_field_out->field_format = format;
+  message_field_out->name = cut_token (file_data, name_tok);
+  message_field_out->set_value = has_value;
+  message_field_out->value_if_set = value;
   return tokens_used;
 }
 static unsigned
-parse_union_format  (BulpImports *imports,
+parse_message_format(BulpImports *imports,
                      const char *filename,
                      const uint8_t *file_data,
                      unsigned n_tokens, Token *tokens,
                      BulpError **error)
 {
   unsigned token_at = 0;
-  assert(tokens[0].type == TOKEN_TYPE_UNION);
-  unsigned n_cases = 0;
+  assert(tokens[0].type == TOKEN_TYPE_MESSAGE);
+  unsigned n_fields = 0;
   if (token_at + 1 >= n_tokens || tokens[token_at+1].type == TOKEN_TYPE_BAREWORD)
     {
-      *error = bulp_error_new_parse (filename, tokens[token_at].line_no, "expected structure name");
+      *error = bulp_error_new_parse (filename, tokens[token_at].line_no, "expected message name");
       goto error_cleanup;
     }
   Token *name_tok = tokens + token_at + 1;
@@ -2196,9 +2205,9 @@ parse_union_format  (BulpImports *imports,
       *error = bulp_error_new_parse (filename, tokens[token_at+1].line_no, "expected '%c'", BULP_LBRACE_CHAR);
       goto error_cleanup;
     }
-  unsigned cases_alloced = 4;
-  BulpUnionCase *cases = malloc(sizeof(BulpUnionCase) * cases_alloced);
-  BulpUnionCase c;
+  unsigned fields_alloced = 4;
+  BulpMessageField *fields = malloc(sizeof(BulpMessageField) * fields_alloced);
+  BulpMessageField mfield;
   token_at += 3;
   while (token_at < n_tokens && tokens[token_at].type != TOKEN_TYPE_RBRACE)
     {
@@ -2207,15 +2216,21 @@ parse_union_format  (BulpImports *imports,
           token_at++;
           continue;
         }
-      unsigned mn = parse_union_case(imports, filename, file_data, n_tokens - token_at, tokens + token_at, &c, error);
+      unsigned mn = parse_message_field(imports,
+                                        filename,
+                                        file_data,
+                                        n_tokens - token_at,
+                                        tokens + token_at,
+                                        &mfield,
+                                        error);
       if (mn == 0)
         goto error_cleanup;
-      if (n_cases == cases_alloced)
+      if (n_fields == fields_alloced)
         {
-          cases_alloced *= 2;
-          cases = realloc (cases, sizeof(BulpUnionCase) * cases_alloced);
+          fields_alloced *= 2;
+          fields = realloc (fields, sizeof(BulpMessageField) * fields_alloced);
         }
-      cases[n_cases++] = c;
+      fields[n_fields++] = mfield;
     }
   if (token_at == n_tokens)
     {
@@ -2224,9 +2239,9 @@ parse_union_format  (BulpImports *imports,
     }
   token_at++;
 
-  BulpFormat *fmt = bulp_format_new_union (n_cases, cases);
-  for (unsigned k = 0; k < n_cases; k++)
-    free ((char*) cases[k].name);
+  BulpFormat *fmt = bulp_format_new_message (n_fields, fields);
+  for (unsigned k = 0; k < n_fields; k++)
+    free ((char*) fields[k].name);
   bulp_namespace_add_format (imports->this_ns, name_tok->byte_length,
                              (char*) file_data + name_tok->byte_offset, fmt,
                              BULP_TRUE);
@@ -2234,11 +2249,11 @@ parse_union_format  (BulpImports *imports,
   return token_at;
 
 error_cleanup:
-  for (unsigned k = 0; k < n_cases; k++)
+  for (unsigned k = 0; k < n_fields; k++)
     {
-      free ((char*) cases[k].name);
+      free ((char*) fields[k].name);
     }
-  free (cases);
+  free (fields);
   return 0;
 }
 
@@ -2261,26 +2276,26 @@ parse_tokens (BulpImports *imports,
     {
       *error = bulp_error_new_parse (filename, tokens[0].line_no,
                               "expected 'namespace'");
-      goto error_cleanup;
+      return BULP_FALSE;
     }
   unsigned token_at = 1;
   if (n_tokens < 2 || tokens[1].type != TOKEN_TYPE_BAREWORD)
     {
       *error = bulp_error_new_parse (filename, tokens[0].line_no,
                               "expected namespace name");
-      goto error_cleanup;
+      return BULP_FALSE;
     }
   unsigned ns_n_tokens = parse_dotted_name_from_tokens (filename, n_tokens - 1, tokens + 1, error);
   if (ns_n_tokens == 0)
     {
-      goto error_cleanup;
+      return BULP_FALSE;
     }
   token_at += ns_n_tokens;
 
   if (tokens[token_at].type != TOKEN_TYPE_SEMICOLON)
     {
       *error = bulp_error_new_parse (filename, tokens[token_at].line_no, "expected ';'");
-      goto error_cleanup;
+      return BULP_FALSE;
     }
 
   // parse stanzas 
@@ -2299,7 +2314,7 @@ parse_tokens (BulpImports *imports,
                                                           tokens + token_at,
                                                           error);
               if (n_subtokens == 0)
-                goto error_cleanup;
+                return BULP_FALSE;
               token_at += n_subtokens;
             }
             break;
@@ -2312,7 +2327,7 @@ parse_tokens (BulpImports *imports,
                                                           tokens + token_at,
                                                           error);
               if (n_subtokens == 0)
-                goto error_cleanup;
+                return BULP_FALSE;
               token_at += n_subtokens;
             }
             break;
@@ -2323,7 +2338,7 @@ parse_tokens (BulpImports *imports,
                                n_tokens - token_at, tokens + token_at,
                                error);
               if (n_subtokens == 0)
-                goto error_cleanup;
+                return BULP_FALSE;
               token_at += n_subtokens;
             }
             break;
@@ -2334,7 +2349,7 @@ parse_tokens (BulpImports *imports,
                                n_tokens - token_at, tokens + token_at,
                                error);
               if (n_subtokens == 0)
-                goto error_cleanup;
+                return BULP_FALSE;
               token_at += n_subtokens;
             }
             break;
@@ -2343,7 +2358,7 @@ parse_tokens (BulpImports *imports,
             *error = bulp_error_new_parse (filename, tokens[token_at].line_no,
                    "expected 'struct', 'object', 'packed', or 'union', got %s",
                    token_type_to_string(tokens[token_at].type));
-            goto error_cleanup;
+            return BULP_FALSE;
         }
     }
 
@@ -2363,7 +2378,7 @@ bulp_namespace_parse_file       (BulpNamespace *ns,
     {
       return BULP_FALSE;
     }
-  parse_rv = bulp_namespace_parse_data (ns, filename, data_length, data, error);
+  bulp_bool parse_rv = bulp_namespace_parse_data (ns, filename, data_length, data, error);
   free (data);
   return parse_rv;
 }
@@ -2378,6 +2393,7 @@ bulp_namespace_parse_data       (BulpNamespace *ns,
   // tokenize
   unsigned lineno = 1;
   TokenizeResult tokenize_result = tokenize (filename, data_length, data, &lineno);
+  BulpImports *imports = bulp_imports_new (ns);
   if (tokenize_result.failed != NULL)
     {
       *error = tokenize_result.failed;
@@ -2385,8 +2401,7 @@ bulp_namespace_parse_data       (BulpNamespace *ns,
     }
 
   // parse tokens
-  bulp_bool parse_token_rv = parse_tokens (filename, tokenize_result.n, tokenize_result.tokens, error);
+  bulp_bool parse_token_rv = parse_tokens (imports, filename, data, tokenize_result.n, tokenize_result.tokens, error);
   free (tokenize_result.tokens);
-  free (file_data);
   return parse_token_rv;
 }

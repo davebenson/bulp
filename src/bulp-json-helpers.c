@@ -1,4 +1,4 @@
-#include "bulp-json-helpers.h"
+#include "bulp.h"
 
 static inline bulp_bool
 is_octal_digit (char d)
@@ -16,7 +16,7 @@ bulp_json_find_backslash_sequence_length (size_t data_length, const uint8_t *dat
   assert(data[start_offset] == '\\');
   if (start_offset + 1 >= data_length)
     {
-      *error = bulp_error_new_premature_eof ();
+      *error = bulp_error_new_premature_eof (filename, "in backslash sequence");
       BULP_ERROR_SET_C_LOCATION (*error);
       return 0;
     }
@@ -42,13 +42,13 @@ bulp_json_find_backslash_sequence_length (size_t data_length, const uint8_t *dat
     case 'u':
       if (start_offset + 5 >= data_length)
         {
-          *error = bulp_error_new_premature_eof (filename, *lineno_inout);
+          *error = bulp_error_new_premature_eof (filename, "\\u expected 4 hex digits");
           BULP_ERROR_SET_C_LOCATION (*error);
           return 0;
         }
       return 6;
     default:
-      *error = bulp_error_new_invalid_backslash_sequence (filename, *lineno_inout);
+      *error = bulp_error_new_parse (filename, *lineno_inout, "invalid backslash sequence");
       BULP_ERROR_SET_C_LOCATION (*error);
       return 0;
   }
@@ -72,7 +72,7 @@ bulp_json_find_quoted_string_length (size_t data_length,
       switch (data[offset])
         {
           case '\n':
-            *error = bulp_error_parse_bad_newline ("newlines not allowed in strings", filename, *lineno_inout);
+            *error = bulp_error_new_parse (filename, *lineno_inout, "newlines not allowed in strings");
             break;
           case '\\':
             {
@@ -104,7 +104,7 @@ bulp_json_find_quoted_string_length (size_t data_length,
             break;
         }
     }
-  *error = bulp_error_new_unterminated_string (filename, start_line_no);
+  *error = bulp_error_new_premature_eof  (filename, "unterminated quoted string starting at line %u", (unsigned) start_line_no);
   return 0;
 }
 
