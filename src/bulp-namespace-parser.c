@@ -909,7 +909,7 @@ parse_json_value (const char *filename,
         const char *end = at + tokens[0].byte_length;
 
         // convert to literal string
-        BulpString s = bulp_json_string_to_literal (at, end, filename, tokens[0].line_no, error);
+        BulpString s = bulp_json_string_to_literal (at, end);
         if (s.str == NULL)
           {
             return 0;

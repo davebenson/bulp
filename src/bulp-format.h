@@ -35,11 +35,13 @@ typedef struct {
                                 ...);
   void      (*json_to_packed)  (BulpFormat  *format,
                                 ...);
+
+  void      (*destruct_format) (BulpFormat  *format);
 } BulpFormatVFuncs;
 
 typedef struct {
   BulpFormatType type;
-  unsigned ref_count;
+  uint32_t ref_count;
   BulpFormatVFuncs vfuncs;
 
   BulpNamespace *canonical_ns;

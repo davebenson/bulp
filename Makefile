@@ -4,13 +4,15 @@ all: bin/tests/format-parser-0
 
 lib/libbulp.a: \
 obj/bulp-namespace-parser.o \
+obj/bulp-error.o \
 obj/bulp-format-bit-packing.o \
+obj/bulp-format.o \
 obj/bulp-json-helpers.o \
 obj/bulp-util.o
 	@mkdir -p lib
 	ar cru $@ $^
 
-bin/tests/%: src/tests/%.c
+bin/tests/%: src/tests/%.c lib/libbulp.a
 	@mkdir -p bin/tests
 	$(CC) -W -Wall -o $@ src/tests/$*.c -Llib -lbulp 
         
@@ -26,4 +28,4 @@ obj/%.o: src/%.c
 obj/bulp-format-bit-packing.o: generated/bulp-config-bit-packing.h
 
 clean:
-	rm -rf obj/*
+	rm -rf obj lib bin

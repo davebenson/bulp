@@ -1,17 +1,19 @@
 #ifndef __BULP_H_INCLUDED__
 #define __BULP_H_INCLUDED__
 
+typedef struct BulpError BulpError;
+
 #include <stddef.h>
 #include <stdint.h>
 #include <assert.h>
 #include <unistd.h>                     // for ssize_t
 
 #include "bulp-defs.h"
+#include "bulp-object.h"
 #include "bulp-error.h"
 #include "bulp-util.h"
 #include "bulp-buffer.h"
 #include "bulp-mem-pool.h"
-#include "bulp-object.h"
 
 #include "bulp-format.h"                        /* also includes namespace support */
 

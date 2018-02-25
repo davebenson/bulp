@@ -38,6 +38,11 @@ typedef enum
   BULP_UTF16_SURROGATE_LO
 } BulpUTF16SurrogateType;
 
+#define BULP_UTF16_IS_BIG(unicode)          ((unicode) >= 0x10000)
+#define BULP_UTF16_IS_ENCODABLE(unicode)    ((unicode) < 0x110000)
+
+
+#if BULP_CAN_INLINE || defined(BULP_INTERNAL_IMPLEMENT_INLINE_FUNCTIONS)
 BULP_INLINE BulpUTF16SurrogateType
 bulp_utf16_surrogate_type (uint16_t utf16)
 {
@@ -61,9 +66,6 @@ bulp_utf16_surrogates_combine (uint16_t hi, uint16_t lo)
   return ((hi - 0xd800) << 10) + (lo - 0xdc00) + 0x10000;
 }
 
-#define BULP_UTF16_IS_BIG(unicode)          ((unicode) >= 0x10000)
-#define BULP_UTF16_IS_ENCODABLE(unicode)    ((unicode) < 0x110000)
-
 BULP_INLINE void
 bulp_utf16_big_encode (unsigned unicode, uint16_t *hi_out, uint16_t *lo_out)
 {
@@ -73,3 +75,5 @@ bulp_utf16_big_encode (unsigned unicode, uint16_t *hi_out, uint16_t *lo_out)
   *hi_out = 0xd800 + (x >> 10);
   *lo_out = 0xd800 + (x & 1023);
 }
+#endif
+

@@ -6,7 +6,18 @@ typedef enum {
   BULP_ERROR_JSON_BAD_NUMBER,
   BULP_ERROR_JSON_BAD_STRING,
   BULP_ERROR_PARSE,
+  BULP_ERROR_FILE_NOT_FOUND,
+  BULP_ERROR_FILE_OPEN_FAILURE,
+  BULP_ERROR_FILE_STAT_FAILURE,
+  BULP_ERROR_FILE_READ_FAILURE,
 } BulpErrorCode;
+
+typedef struct BulpError BulpError;
+
+typedef struct BulpErrorClass BulpErrorClass;
+struct BulpErrorClass {
+  BulpClass base_class;
+};
 
 typedef struct BulpError BulpError;
 struct BulpError {
@@ -16,9 +27,7 @@ struct BulpError {
   unsigned c_lineno;
   BulpError *cause;
   unsigned ref_count;
-
-  unsigned source_offset;
-  unsigned source_lineno;
+  void (*destroy)(BulpError*);
 };
 
 
@@ -41,8 +50,6 @@ BulpError *bulp_error_new_unknown_format (const char *filename,
 BulpError *bulp_error_new_optional_optional (const char *filename,
                                              unsigned    line_no,
                                              const char *base_format_name);
-BulpError *bulp_error_ref (BulpError *error);
-void       bulp_error_unref (BulpError *error);
 
 void       bulp_error_append_message (BulpError *error,
                                       const char *format,
@@ -52,3 +59,13 @@ void       bulp_error_append_message (BulpError *error,
     (e)->c_filename = __FILE__;             \
     (e)->c_lineno = __LINE__;               \
   }while(0)
+
+
+// implementation helpers - probably not necessary to be public api
+void       bulp_error_base_destroy_protected (BulpError *);
+BulpError *bulp_error_new_protected (BulpErrorCode code,
+                                     size_t        sizeof_error,                // or 0 for sizeof(BulpError)
+                                     void        (*destroy)(BulpError*),        // or NULL for base destroy
+                                     const char   *format,
+                                     ...) BULP_PRINTF_LIKE(4,5);
+
