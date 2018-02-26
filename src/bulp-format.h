@@ -24,7 +24,7 @@ typedef struct {
   size_t    (*pack_to)         (BulpFormat *format,
                                 void *native_data,
                                 BulpBuffer *out);
-  bulp_bool (*unpack)          (BulpFormat *format,
+  size_t    (*unpack)          (BulpFormat *format,
                                 size_t packed_len,
                                 const uint8_t *packed_data,
                                 void *native_data_out,

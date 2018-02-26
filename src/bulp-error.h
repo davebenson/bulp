@@ -54,6 +54,9 @@ BulpError *bulp_error_new_unknown_format (const char *filename,
 BulpError *bulp_error_new_optional_optional (const char *filename,
                                              unsigned    line_no,
                                              const char *base_format_name);
+BulpError *bulp_error_new_too_short (const char *format,
+                                     ...) BULP_PRINTF_LIKE(1,2);
+
 
 void       bulp_error_append_message (BulpError *error,
                                       const char *format,

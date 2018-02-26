@@ -322,25 +322,25 @@ DSK_STMT_START{                                                                 
     }                                                                         \
 }DSK_STMT_END
 #define DSK_RBTREE_REPLACE_NODE_(top,type,is_red,set_is_red,parent,left,right,comparator, old_node,replacement_node) \
-DSK_STMT_START{                                                                 \
+DSK_STMT_START{                                                               \
     int _dsk_old_is_red = is_red (old_node);                                  \
     set_is_red (replacement_node, _dsk_old_is_red);                           \
-    if (old_node->parent)                                                     \
+    if ((old_node)->parent)                                                   \
       {                                                                       \
-        if (old_node->parent->left == old_node)                               \
-          old_node->parent->left = replacement_node;                          \
+        if ((old_node)->parent->left == (old_node))                           \
+          (old_node)->parent->left = replacement_node;                        \
         else                                                                  \
-          old_node->parent->right = replacement_node;                         \
+          (old_node)->parent->right = replacement_node;                       \
       }                                                                       \
     else                                                                      \
       top = replacement_node;                                                 \
-    replacement_node->left = old_node->left;                                  \
-    replacement_node->right = old_node->right;                                \
-    replacement_node->parent = old_node->parent;                              \
-    if (replacement_node->left)                                               \
-      replacement_node->left->parent = replacement_node;                      \
-    if (replacement_node->right)                                              \
-      replacement_node->right->parent = replacement_node;                     \
+    (replacement_node)->left = (old_node)->left;                              \
+    (replacement_node)->right = (old_node)->right;                            \
+    (replacement_node)->parent = (old_node)->parent;                          \
+    if ((replacement_node)->left)                                             \
+      (replacement_node)->left->parent = replacement_node;                    \
+    if ((replacement_node)->right)                                            \
+      (replacement_node)->right->parent = replacement_node;                   \
 }DSK_STMT_END
 
 #define DSK_RBTREE_REMOVE_(top,type,is_red,set_is_red,parent,left,right,comparator, node) \

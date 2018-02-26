@@ -1,10 +1,11 @@
-
-void _bulp_namespace_add_int_types (BulpNamespace *ns);
-void _bulp_namespace_add_float_types (BulpNamespace *ns);
-void _bulp_namespace_add_string_types (BulpNamespace *ns);
-void _bulp_namespace_add_binary_data_types (BulpNamespace *ns);
-
 typedef struct BulpNamespaceTreeNode BulpNamespaceTreeNode;
+typedef struct BulpNamespaceToplevel BulpNamespaceToplevel;
+
+void _bulp_namespace_add_int_types (BulpNamespaceToplevel *ns);
+void _bulp_namespace_add_float_types (BulpNamespaceToplevel *ns);
+void _bulp_namespace_add_string_types (BulpNamespaceToplevel *ns);
+void _bulp_namespace_add_binary_data_types (BulpNamespaceToplevel *ns);
+
 struct BulpNamespaceTreeNode
 {
   char *name;
@@ -21,7 +22,6 @@ struct BulpNamespace
   BulpNamespaceTreeNode *by_name;
 };
 
-typedef struct BulpNamespaceToplevel BulpNamespaceToplevel;
 struct BulpNamespaceToplevel
 {
   BulpNamespace base;

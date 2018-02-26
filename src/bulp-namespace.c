@@ -26,18 +26,29 @@ BulpNamespace *bulp_namespace_global (void)
 BulpNamespace *
 bulp_namespace_new_global (void)
 {
-  BulpNamespace *rv = malloc (sizeof (BulpNamespaceToplevel));
-  rv->ref_count = 1;
-  rv->version = 0;
-  rv->by_name = NULL;
-  rv->is_toplevel = BULP_TRUE;
+  BulpNamespaceToplevel *rv = malloc (sizeof (BulpNamespaceToplevel));
+  rv->base.ref_count = 1;
+  rv->base.version = 0;
+  rv->base.by_name = NULL;
+  rv->base.is_toplevel = BULP_TRUE;
 
   _bulp_namespace_add_int_types (rv);
   _bulp_namespace_add_float_types (rv);
   _bulp_namespace_add_string_types (rv);
   _bulp_namespace_add_binary_data_types (rv);
   
-  return rv;
+  return (BulpNamespace *) rv;
+}
+
+BulpNamespace *
+_bulp_namespace_new_nontoplevel (void)
+{
+  BulpNamespace *rv = malloc (sizeof (BulpNamespace));
+  rv->ref_count = 1;
+  rv->version = 0;
+  rv->by_name = NULL;
+  rv->is_toplevel = BULP_FALSE;
+  return NULL;
 }
 
 /* Returns false if the name is already in use */
@@ -151,44 +162,102 @@ bulp_bool      bulp_namespace_query            (BulpNamespace *ns,
                                                 const char    *dotted_name,
                                                 BulpNamespaceEntry *out)
 {
-  ... iterate over dotted components
-}
-
-BulpNamespace *
-bulp_namespace_force_1      (BulpNamespace *ns,
-                             const char    *name)
-{
-  BulpNamespaceTreeNode tn;
-  ...
-  if (conflict == NULL)
-    return conflict;
-  else
+  BulpNamespace *ns_at = ns;
+  const char *at = dotted_name;
+  for (;;)
     {
-      // replace node with one on heap
-      ...
+      const char *end = at;
+      while (*end != 0 && *end != '.') end++;
+      if (at == end)
+        {
+          // empty name not allowed
+          return BULP_FALSE;
+        }
+      else if (*end == 0)
+        {
+          // final component: just call query_1_len
+          return bulp_namespace_query_1_len (ns, end-at, at, out);
+        }
+      else
+        {
+          // lookup
+          if (!bulp_namespace_query_1_len (ns, end-at, at, out))
+            return BULP_FALSE;
+          // if not a subnamespace, fail.
+          if (out->type != BULP_NAMESPACE_ENTRY_SUBNAMESPACE)
+            return BULP_FALSE;
+          ns_at = out->info.v_namespace;
+          at = end + 1;
+        }
     }
 }
+
 
 BulpNamespace *
 bulp_namespace_force_1_len  (BulpNamespace *ns,
                              size_t         name_len,
                              const char    *name)
 {
-...
+  BulpNamespaceTreeNode tn;
+  assert(memchr (name, '.', name_len) == NULL);
+  char *n = alloca (name_len + 1);
+  memcpy (n, name, name_len);
+  n[name_len] = 0;
+  tn.name = n;
+  BulpNamespaceTreeNode *conflict;
+  DSK_RBTREE_INSERT (GET_TREE (ns), &tn, conflict);
+  if (conflict == NULL)
+    {
+      if (conflict->entry.type != BULP_NAMESPACE_ENTRY_SUBNAMESPACE)
+        return NULL;
+      return conflict->entry.info.v_namespace;
+    }
+  else
+    {
+      BulpNamespace *rv;
+      rv = _bulp_namespace_new_nontoplevel ();
+      BulpNamespaceTreeNode *new_node = malloc (sizeof (BulpNamespaceTreeNode));
+      new_node->name = strdup (tn.name);
+      new_node->entry.type = BULP_NAMESPACE_ENTRY_SUBNAMESPACE;
+      new_node->entry.info.v_namespace = rv;
+      DSK_RBTREE_REPLACE_NODE (GET_TREE (ns), (&tn), new_node);
+      return rv;
+    }
 }
 
 BulpNamespace *
-bulp_namespace_force    (BulpNamespace *ns,
-                             const char    *name)
+bulp_namespace_force_1  (BulpNamespace *ns,
+                         const char    *name)
 {
-  return bulp_namespace_force_len (ns, strlen (name), name);
+  return bulp_namespace_force_1_len (ns, strlen (name), name);
 }
 
 BulpNamespace *
-bulp_namespace_force_len    (BulpNamespace *ns,
-                             size_t         name_len,
-                             const char    *name)
+bulp_namespace_force_subnamespace  (BulpNamespace *ns,
+                                    const char    *dotted_name)
 {
+  BulpNamespace *ns_at = ns;
+  const char *at = dotted_name;
+  for (;;)
+    {
+      const char *end = at;
+      while (*end != 0 && *end != '.') end++;
+      if (at == end)
+        {
+          // empty name not allowed
+          return BULP_FALSE;
+        }
+      else
+        {
+          // final component: just call query_1_len
+          ns_at = bulp_namespace_force_1_len (ns, end-at, at);
+          if (!ns_at)
+            return NULL;
+          if (*end == 0)
+            return ns_at;
+          at = end + 1;
+        }
+    }
 }
 
 static bulp_bool
@@ -225,12 +294,34 @@ BulpNamespace *bulp_namespace_ref (BulpNamespace *ns)
   return ns;
 }
 
+static void
+destroy_ns_tree_node (BulpNamespaceTreeNode *n)
+{
+  if (n != NULL)
+    {
+      destroy_ns_tree_node (n->left);
+      destroy_ns_tree_node (n->right);
+      free (n->name);
+      switch (n->entry.type)
+        {
+          case BULP_NAMESPACE_ENTRY_FORMAT:
+            bulp_format_unref (n->entry.info.v_format);
+            break;
+          case BULP_NAMESPACE_ENTRY_SUBNAMESPACE:
+            bulp_namespace_unref (n->entry.info.v_namespace);
+            break;
+        }
+      free (n);
+    }
+}
+
 void           bulp_namespace_unref (BulpNamespace *ns)
 {
   assert(ns->ref_count > 0);
   if (--(ns->ref_count) == 0)
     {
-    ... finalize
+      destroy_ns_tree_node (ns->by_name);
+      free (ns);
     }
 }
 
