@@ -43,6 +43,136 @@ typedef enum
 
 
 #if BULP_CAN_INLINE || defined(BULP_INTERNAL_IMPLEMENT_INLINE_FUNCTIONS)
+BULP_INLINE unsigned
+bulp_utf8_char_encode (unsigned unicode,
+                       uint8_t *bytes_out)
+{
+  if (unicode < (1<<7))
+    {
+      bytes_out[0] = unicode;
+      return 1;
+    }
+  else if (unicode < (1<<11))
+    {
+      bytes_out[0] = 0xc0 | (unicode >> 6);
+      bytes_out[1] = 0x80 | (unicode & 31);
+      return 2;
+    }
+  else if (unicode < (1<<16))
+    {
+      bytes_out[0] = 0xe0 | (unicode >> 12);
+      bytes_out[1] = 0x80 | ((unicode >> 6) & 0x3f);
+      bytes_out[2] = 0x80 | ((unicode >> 0) & 0x3f);
+      return 3;
+    }
+  else if (unicode < (1<<21))
+    {
+      bytes_out[0] = 0xf0 | (unicode >> 18);
+      bytes_out[1] = 0x80 | ((unicode >> 12) & 0x3f);
+      bytes_out[2] = 0x80 | ((unicode >> 6) & 0x3f);
+      bytes_out[3] = 0x80 | ((unicode >> 0) & 0x3f);
+      return 4;
+    }
+  else
+    {
+      assert(0);
+      return 0;
+    }
+}
+
+BULP_INLINE unsigned
+bulp_utf8_parse_char (size_t len,
+                      const uint8_t *data,
+                      uint32_t *codepoint_out,
+                      BulpError **error)
+{
+  if ((data[0] & 0x80) == 0)
+    {
+      *codepoint_out = data[0];
+      return 1;
+    }
+  if ((data[0] & 0xe0) == 0xc0)
+    {
+      if (len < 2)
+        goto too_short;
+      if ((data[1] & 0xc0) != 0x80)
+        goto bad_format;
+      *codepoint_out = (((unsigned)data[0] & 0x1f) << 6)
+                     | (((unsigned)data[1] & 0x3f) << 0);
+      return 2;
+    }
+  if ((data[0] & 0xf0) == 0xe0)
+    {
+      if (len < 3)
+        goto too_short;
+      if ((data[1] & 0xc0) != 0x80 || (data[2] & 0xc0) != 0x80)
+        goto bad_format;
+      *codepoint_out = (((unsigned)data[0] & 0x0f) << 12)
+                     | (((unsigned)data[1] & 0x3f) << 6)
+                     | (((unsigned)data[2] & 0x3f) << 0);
+      return 3;
+    }
+  if ((data[0] & 0xf8) == 0xf0)
+    {
+      if (len < 4)
+        goto too_short;
+      if ((data[1] & 0xc0) != 0x80 || (data[2] & 0xc0) != 0x80 || (data[3] & 0xc0) != 0x80)
+        goto bad_format;
+      *codepoint_out = (((unsigned)data[0] & 0x07) << 18)
+                     | (((unsigned)data[1] & 0x3f) << 12)
+                     | (((unsigned)data[2] & 0x3f) << 6)
+                     | (((unsigned)data[3] & 0x3f) << 0);
+      return 4;
+    }
+bad_format:
+  *error = bulp_error_new_bad_utf8 ();
+  return 0;
+too_short:
+  *error = bulp_error_new_short_utf8 ();
+  return 0;
+}
+
+BULP_INLINE unsigned
+bulp_utf8_validate_char (size_t len,
+                         const uint8_t *data,
+                         BulpError **error)
+{
+  if ((data[0] & 0x80) == 0)
+    {
+      return 1;
+    }
+  if ((data[0] & 0xe0) == 0xc0)
+    {
+      if (len < 2)
+        goto too_short;
+      if ((data[1] & 0xc0) != 0x80)
+        goto bad_format;
+      return 2;
+    }
+  if ((data[0] & 0xf0) == 0xe0)
+    {
+      if (len < 3)
+        goto too_short;
+      if ((data[1] & 0xc0) != 0x80 || (data[2] & 0xc0) != 0x80)
+        goto bad_format;
+      return 3;
+    }
+  if ((data[0] & 0xf8) == 0xf0)
+    {
+      if (len < 3)
+        goto too_short;
+      if ((data[1] & 0xc0) != 0x80 || (data[2] & 0xc0) != 0x80 || (data[3] & 0xc0) != 0x80)
+        goto bad_format;
+      return 4;
+    }
+bad_format:
+  *error = bulp_error_new_bad_utf8 ();
+  return 0;
+too_short:
+  *error = bulp_error_new_short_utf8 ();
+  return 0;
+}
+
 BULP_INLINE BulpUTF16SurrogateType
 bulp_utf16_surrogate_type (uint16_t utf16)
 {

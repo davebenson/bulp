@@ -4,9 +4,11 @@ all: bin/tests/format-parser-0
 
 lib/libbulp.a: \
 obj/bulp-namespace-parser.o \
+obj/bulp-namespace.o \
 obj/bulp-error.o \
 obj/bulp-format-bit-packing.o \
 obj/bulp-format.o \
+obj/bulp-ints.o \
 obj/bulp-json-helpers.o \
 obj/bulp-util.o
 	@mkdir -p lib
@@ -14,7 +16,7 @@ obj/bulp-util.o
 
 bin/tests/%: src/tests/%.c lib/libbulp.a
 	@mkdir -p bin/tests
-	$(CC) -W -Wall -o $@ src/tests/$*.c -Llib -lbulp 
+	$(CC) -O -W -Wall -o $@ src/tests/$*.c -Llib -lbulp 
         
 
 generated/bulp-config-bit-packing.h: build/compute-bit-packing-strategy

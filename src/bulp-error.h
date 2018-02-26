@@ -10,6 +10,10 @@ typedef enum {
   BULP_ERROR_FILE_OPEN_FAILURE,
   BULP_ERROR_FILE_STAT_FAILURE,
   BULP_ERROR_FILE_READ_FAILURE,
+  BULP_ERROR_UNKNOWN_FORMAT,
+  BULP_ERROR_OPTIONAL_OPTIONAL,
+  BULP_ERROR_UTF8_BAD,
+  BULP_ERROR_UTF8_SHORT,
 } BulpErrorCode;
 
 typedef struct BulpError BulpError;
@@ -55,6 +59,8 @@ void       bulp_error_append_message (BulpError *error,
                                       const char *format,
                                       ...) BULP_PRINTF_LIKE(2,3);
 
+BulpError *bulp_error_new_bad_utf8 (void);
+BulpError *bulp_error_new_short_utf8 (void);
 #define BULP_ERROR_SET_C_LOCATION(e) do{    \
     (e)->c_filename = __FILE__;             \
     (e)->c_lineno = __LINE__;               \

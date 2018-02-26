@@ -25,7 +25,7 @@ typedef struct BulpError BulpError;
 #include "bulp-stream-api.h"
 
 // internals
-#include "bulp-json-helpers.h"
 #include "bulp-utf.h"
+#include "bulp-json-helpers.h"
 
 #endif

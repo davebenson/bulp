@@ -18,7 +18,12 @@ typedef int bulp_bool;
 # define BULP_PRINTF_LIKE( format_idx, arg_idx )
 #endif
 
+// TODO
+#define BULP_LIKELY(cond)   (cond)
+#define BULP_UNLIKELY(cond)   (cond)
+
 #define BULP_INLINE inline
+#define BULP_CAN_INLINE 1
 
 
 #define BULP_LBRACE_CHAR    '{'

@@ -37,7 +37,7 @@ struct BulpBufferFragmentGeneric
   void                *destroy_data;
 };
 
-struct _BulpBuffer
+struct BulpBuffer
 {
   unsigned              size;
 
@@ -223,7 +223,7 @@ BULP_INLINE void bulp_buffer_append_small(BulpBuffer    *buffer,
 {
   BulpBufferFragment *f = buffer->last_frag;
   if (f != NULL
-   && !f->is_foreign
+   && f->fragment_type != BULP_BUFFER_FRAGMENT_GENERIC
    && f->buf_start + f->buf_length + length <= f->buf_max_size)
     {
       uint8_t *dst = f->buf + (f->buf_start + f->buf_length);
@@ -241,7 +241,7 @@ BULP_INLINE void bulp_buffer_append_byte(BulpBuffer    *buffer,
 {
   BulpBufferFragment *f = buffer->last_frag;
   if (f != NULL
-   && !f->is_foreign
+   && f->fragment_type != BULP_BUFFER_FRAGMENT_GENERIC
    && f->buf_start + f->buf_length < f->buf_max_size)
     {
       f->buf[f->buf_start + f->buf_length] = byte;

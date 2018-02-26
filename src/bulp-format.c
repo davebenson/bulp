@@ -8,7 +8,7 @@ bulp_format_ref  (BulpFormat       *format)
   assert(format->base.ref_count == FORMAT_REF_COUNT_INVALID);
   if (format->base.ref_count == 0)
     return format;
-  ++(format->ref_count);
+  ++(format->base.ref_count);
   return format;
 }
 
@@ -21,7 +21,7 @@ bulp_format_unref (BulpFormat       *format)
   if (--(format->base.ref_count) == 0)
     {
       format->base.ref_count = FORMAT_REF_COUNT_INVALID;
-      format->vfuncs.destruct_format (format);
+      format->base.vfuncs.destruct_format (format);
       free (format);
     }
 }

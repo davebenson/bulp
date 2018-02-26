@@ -330,25 +330,24 @@ BulpFormat *bulp_format_ref              (BulpFormat       *format);
 void        bulp_format_unref            (BulpFormat       *format);
 
 
-#define bulp_format_short       ((BulpFormat *) (&bulp_format_ints_global[0]))
-#define bulp_format_int         ((BulpFormat *) (&bulp_format_ints_global[1]))
-#define bulp_format_long        ((BulpFormat *) (&bulp_format_ints_global[2]))
-#define bulp_format_ushort      ((BulpFormat *) (&bulp_format_ints_global[3]))
-#define bulp_format_uint        ((BulpFormat *) (&bulp_format_ints_global[4]))
-#define bulp_format_ulong       ((BulpFormat *) (&bulp_format_ints_global[5]))
-#define bulp_format_int8        ((BulpFormat *) (&bulp_format_ints_global[6]))
-#define bulp_format_int16       ((BulpFormat *) (&bulp_format_ints_global[7]))
-#define bulp_format_int32       ((BulpFormat *) (&bulp_format_ints_global[8]))
-#define bulp_format_int64       ((BulpFormat *) (&bulp_format_ints_global[9]))
-#define bulp_format_uint8       ((BulpFormat *) (&bulp_format_ints_global[10]))
-#define bulp_format_uint16      ((BulpFormat *) (&bulp_format_ints_global[11]))
-#define bulp_format_uint32      ((BulpFormat *) (&bulp_format_ints_global[12]))
-#define bulp_format_uint64      ((BulpFormat *) (&bulp_format_ints_global[13]))
-
-#define bulp_format_byte        bulp_format_uint8
-
-#define bulp_format_float32     ((BulpFormat *) (bulp_format_floats_global[0])
-#define bulp_format_float64     ((BulpFormat *) (bulp_format_floats_global[1])
+bulp_bool    bulp_namespace_is_toplevel     (BulpNamespace *ns);
+BulpFormat * bulp_namespace_get_short       (BulpNamespace *toplevel_ns);
+BulpFormat * bulp_namespace_get_int         (BulpNamespace *toplevel_ns);
+BulpFormat * bulp_namespace_get_long        (BulpNamespace *toplevel_ns);
+BulpFormat * bulp_namespace_get_ushort      (BulpNamespace *toplevel_ns);
+BulpFormat * bulp_namespace_get_uint        (BulpNamespace *toplevel_ns);
+BulpFormat * bulp_namespace_get_ulong       (BulpNamespace *toplevel_ns);
+BulpFormat * bulp_namespace_get_int8        (BulpNamespace *toplevel_ns);
+BulpFormat * bulp_namespace_get_int16       (BulpNamespace *toplevel_ns);
+BulpFormat * bulp_namespace_get_int32       (BulpNamespace *toplevel_ns);
+BulpFormat * bulp_namespace_get_int64       (BulpNamespace *toplevel_ns);
+BulpFormat * bulp_namespace_get_uint8       (BulpNamespace *toplevel_ns);
+BulpFormat * bulp_namespace_get_uint16      (BulpNamespace *toplevel_ns);
+BulpFormat * bulp_namespace_get_uint32      (BulpNamespace *toplevel_ns);
+BulpFormat * bulp_namespace_get_uint64      (BulpNamespace *toplevel_ns);
+#define      bulp_namespace_get_byte        bulp_namespace_get_uint8
+BulpFormat * bulp_namespace_get_float32     (BulpNamespace *toplevel_ns);
+BulpFormat * bulp_namespace_get_float64     (BulpNamespace *toplevel_ns);
 
 #define bulp_format_ascii       ((BulpFormat *) (&bulp_format_strings_global[0]))
 #define bulp_format_string      ((BulpFormat *) (&bulp_format_strings_global[1]))

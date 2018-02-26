@@ -2,6 +2,8 @@
 typedef struct _BulpMemPool BulpMemPool;
 typedef struct _BulpMemPoolFixed BulpMemPoolFixed;
 
+#include <stdlib.h>
+
 /* --- Allocate-only Memory Pool --- */
 struct _BulpMemPool
 {
@@ -133,7 +135,7 @@ BULP_INLINE void     bulp_mem_pool_clear     (BulpMemPool     *pool)
   while (slab)
     {
       void * new_slab = _BULP_MEM_POOL_SLAB_GET_NEXT_PTR (slab);
-      bulp_free (slab);
+      free (slab);
       slab = new_slab;
     }
 }

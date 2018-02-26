@@ -106,7 +106,10 @@ bulp_error_new_unknown_format (const char *filename,
                                unsigned    line_no,
                                const char *dotted_name)
 {
-...
+  return bulp_error_new_protected (BULP_ERROR_UNKNOWN_FORMAT,
+                                   0, NULL,
+                                   "unknown format %s at %s:%u",
+                                   dotted_name, filename, line_no);
 }
 
 BulpError *
@@ -114,13 +117,30 @@ bulp_error_new_optional_optional (const char *filename,
                                   unsigned    line_no,
                                   const char *base_format_name)
 {
-...
+  return bulp_error_new_protected (BULP_ERROR_OPTIONAL_OPTIONAL,
+                                   0, NULL,
+                                   "taking optional of optional not allowed (base format %s) (at %s:%u)",
+                                   base_format_name, filename, line_no);
+}
+BulpError *bulp_error_new_bad_utf8 (void)
+{
+  return bulp_error_new_protected (BULP_ERROR_UTF8_BAD,
+                                   0, NULL,
+                                   "bad UTF-8 encoded data");
+}
+
+BulpError *bulp_error_new_short_utf8 (void)
+{
+  return bulp_error_new_protected (BULP_ERROR_UTF8_SHORT,
+                                   0, NULL,
+                                   "end-of-data mid-UTF-8 encoded character");
 }
 
 BulpError *bulp_error_ref (BulpError *error)
 {
   assert(error->ref_count != 0);
   error->ref_count++;
+  return error;
 }
 
 void       bulp_error_unref (BulpError *error)
@@ -128,7 +148,7 @@ void       bulp_error_unref (BulpError *error)
   assert(error->ref_count != 0);
   if (--error->ref_count == 0)
     {
-      error->destroy
+      error->destroy (error);
     }
 }
 
@@ -137,11 +157,13 @@ void       bulp_error_append_message (BulpError *error,
                                       const char *format,
                                       ...)
 {
-  va_list args = va_start (args, format);
+  va_list args;
+  va_start (args, format);
   char *msg;
   vasprintf (&msg, format, args);
   va_end (args);
-  char *total_msg = asprintf ("%s%s", error->message, msg);
+  char *total_msg;
+  asprintf (&total_msg, "%s%s", error->message, msg);
   free (msg);
   free (error->message);
   error->message = total_msg;
@@ -154,9 +176,28 @@ void bulp_error_base_destroy_protected (BulpError *error)
   free (error);
 }
 
-BulpError *bulp_error_new_protected (BulpErrorCode code,B
+BulpError *bulp_error_new_protected (BulpErrorCode code,
                                      size_t        sizeof_error,                // or 0 for sizeof(BulpError)
-                                     void        (*destroy)(BulpError*);        // or NULL for base destroy
+                                     void        (*destroy)(BulpError*),
                                      const char   *format,
-                                     ...) BULP_PRINTF_LIKE(4,5);
+                                     ...)
+{
+  if (sizeof_error == 0)
+    sizeof_error = sizeof (BulpError);
+  else
+    assert (sizeof_error >= sizeof (BulpError));
+  if (destroy == NULL)
+    destroy = bulp_error_base_destroy_protected;
+  char *msg;
+  va_list args;
+  va_start (args, format);
+  vasprintf (&msg, format, args);
+  va_end (args);
+  BulpError *rv = malloc (sizeof_error);
+  rv->code = code;
+  rv->ref_count = 1;
+  rv->message = msg;
+  rv->destroy = destroy;
+  return rv;
+}
 
