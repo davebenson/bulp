@@ -1,10 +1,7 @@
 typedef struct BulpNamespaceTreeNode BulpNamespaceTreeNode;
 typedef struct BulpNamespaceToplevel BulpNamespaceToplevel;
 
-void _bulp_namespace_add_int_types (BulpNamespaceToplevel *ns);
-void _bulp_namespace_add_float_types (BulpNamespaceToplevel *ns);
-void _bulp_namespace_add_string_types (BulpNamespaceToplevel *ns);
-void _bulp_namespace_add_binary_data_types (BulpNamespaceToplevel *ns);
+void _bulp_namespace_toplevel_add_builtins (BulpNamespaceToplevel *ns);
 
 struct BulpNamespaceTreeNode
 {

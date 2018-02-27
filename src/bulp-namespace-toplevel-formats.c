@@ -1212,7 +1212,7 @@ dup_float_format (BulpFormatFloat *format_float)
 }
 
 void
-_bulp_namespace_global_add_builtins (BulpNamespaceToplevel *ns)
+_bulp_namespace_toplevel_add_builtins (BulpNamespaceToplevel *ns)
 {
 #define ADD_INT_TYPE_TO_NS(shortname)                                 \
   do{                                                                   \

@@ -32,10 +32,7 @@ bulp_namespace_new_global (void)
   rv->base.by_name = NULL;
   rv->base.is_toplevel = BULP_TRUE;
 
-  _bulp_namespace_add_int_types (rv);
-  _bulp_namespace_add_float_types (rv);
-  _bulp_namespace_add_string_types (rv);
-  _bulp_namespace_add_binary_data_types (rv);
+  _bulp_namespace_toplevel_add_builtins (rv);
   
   return (BulpNamespace *) rv;
 }

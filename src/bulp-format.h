@@ -166,10 +166,13 @@ typedef struct
   BulpFormatBase base;
   unsigned n_values;
   BulpFormatEnumValue *values;
+  BulpFormatEnumValue **values_by_name;
 } BulpFormatEnum;
 BulpFormatEnumValue *bulp_format_enum_lookup_by_name (BulpFormat*format,
                                                       ssize_t    name_len,
                                                       const char *name);
+BulpFormatEnumValue *bulp_format_enum_lookup_by_value(BulpFormat*format,
+                                                      unsigned   value);
 
 typedef struct {
   const char *name;

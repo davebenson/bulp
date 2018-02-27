@@ -9,6 +9,7 @@ obj/bulp-error.o \
 obj/bulp-buffer.o \
 obj/bulp-mem-pool.o \
 obj/bulp-format-packed.o \
+obj/bulp-format-enum.o \
 obj/bulp-format.o \
 obj/bulp-namespace-toplevel-formats.o \
 obj/bulp-inlines.o \
