@@ -21,13 +21,15 @@ obj/bulp-util.o
 bin/tests/%: src/tests/%.c lib/libbulp.a
 	@mkdir -p bin/tests
 	$(CC) -O -W -Wall -o $@ src/tests/$*.c -Llib -lbulp 
-        
 
-generated/bulp-config-bit-packing.h: build/compute-bit-packing-strategy
+generated/bulp-machdep-config.h: build/generate-bulp-machdep-config
 	@test -d generated || mkdir generated
-	./build/compute-bit-packing-strategy > generated/bulp-config-bit-packing.h
+	./build/generate-bulp-machdep-config > generated/bulp-machdep-config.h
 
-obj/%.o: src/%.c
+build/generate-bulp-machdep-config: build/generate-bulp-machdep-config.c
+	$(CC) -O -W -Wall -o $@ $^
+
+obj/%.o: src/%.c generated/bulp-machdep-config.h
 	@mkdir -p obj
 	$(CC) -W -Wall -c -o $@ $<
 

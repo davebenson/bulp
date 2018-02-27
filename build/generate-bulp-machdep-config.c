@@ -4,9 +4,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <unistd.h>
 #include <assert.h>
+#include "../src/bulp-defs.h"
+#include "../src/bulp-object.h"
 #include "../src/bulp-error.h"
 #include "../src/bulp-util.h"
+
+#ifndef offsetof
+#define offsetof(st, m) ((size_t)&(((st *)0)->m))
+#endif
+
 
 #if 1
 static void
@@ -532,10 +540,43 @@ config_32bit (void)
   printf ("#define BULP_CONFIG_BITPACK_FORMAT32_CAN_FIELDS_STRADDLE_BYTE_BOUNDARY    %u\n", straddle);
 }
 
+struct AlignInt16Test { char c; uint16_t v; };
+struct AlignInt32Test { char c; uint32_t v; };
+struct AlignInt64Test { char c; uint64_t v; };
+struct AlignFloat32Test { char c; float v; };
+struct AlignFloat64Test { char c; double v; };
+struct AlignPointerTest { char c; void * v; };
+
+static void
+config_align (void)
+{
+  printf ("#define BULP_INT8_ALIGNOF 1\n");
+  printf ("#define BULP_INT16_ALIGNOF %u\n", (unsigned) offsetof(struct AlignInt16Test, v));
+  printf ("#define BULP_INT32_ALIGNOF %u\n", (unsigned) offsetof(struct AlignInt32Test, v));
+  printf ("#define BULP_INT64_ALIGNOF %u\n", (unsigned) offsetof(struct AlignInt64Test, v));
+  printf ("#define BULP_FLOAT32_ALIGNOF %u\n", (unsigned) offsetof(struct AlignFloat32Test, v));
+  printf ("#define BULP_FLOAT64_ALIGNOF %u\n", (unsigned) offsetof(struct AlignFloat64Test, v));
+  printf ("#define BULP_POINTER_ALIGNOF %u\n", (unsigned) offsetof(struct AlignPointerTest, v));
+}
+
+enum TinyEnum { TINY_A, TINY_B };
+enum ShortEnum { SHORT_A, SHORT_B, SHORT_C = 0x100 };
+enum IntEnum { INT_A, INT_B, INT_C = 0x10000 };
+
+static void
+config_enum_sizes (void)
+{
+  printf ("#define BULP_SIZEOF_TINY_ENUM %u\n", (unsigned) sizeof (enum TinyEnum));
+  printf ("#define BULP_SIZEOF_SHORT_ENUM %u\n", (unsigned) sizeof (enum ShortEnum));
+  printf ("#define BULP_SIZEOF_INT_ENUM %u\n", (unsigned) sizeof (enum IntEnum));
+}
+
 int main()
 {
   config_8bit();
   config_16bit();
   config_32bit();
+  config_align();
+  config_enum_sizes();
   return 0;
 }
