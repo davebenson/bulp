@@ -55,7 +55,5 @@ struct BulpNamespaceToplevel
     pack__##shortname,                       \
     pack_to__##shortname,                    \
     unpack__##shortname,                     \
-    packed_to_json__##shortname,             \
-    json_to_packed__##shortname,             \
     destruct_format__##shortname,            \
   }

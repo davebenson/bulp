@@ -77,7 +77,7 @@ void * bulp_mem_pool_must_alloc (BulpMemPool *pool,
 #define _BULP_MEM_POOL_SLAB_GET_NEXT_PTR(slab) \
   (* (void **) (slab))
 
-#if defined(BULP_CAN_INLINE) || defined(BULP_IMPLEMENT_INLINES)
+#if defined(BULP_CAN_INLINE) || defined(BULP_INTERNAL_IMPLEMENT_INLINE_FUNCTIONS)
 BULP_INLINE void     bulp_mem_pool_init    (BulpMemPool     *pool)
 {
   pool->all_chunk_list = NULL;

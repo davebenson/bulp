@@ -99,10 +99,10 @@ void     bulp_buffer_append_repeated_byte(BulpBuffer    *buffer,
 void     bulp_buffer_append_string0      (BulpBuffer    *buffer,
                                          const char   *string);
 
-void     bulp_buffer_append_foreign      (BulpBuffer    *buffer,
+void     bulp_buffer_append_foreign     (BulpBuffer    *buffer,
 					 unsigned      length,
                                          const void   *data,
-					 BulpBufferFragmentGeneric destroy,
+					 BulpBufferFragmentDestroy destroy,
 					 void         *destroy_data);
 
 void     bulp_buffer_printf              (BulpBuffer    *buffer,
@@ -216,7 +216,7 @@ void bulp_buffer_maybe_remove_empty_fragment (BulpBuffer *buffer);
 void bulp_buffer_fragment_free (BulpBufferFragment *fragment);
 
 
-#if BULP_CAN_INLINE || defined(BULP_IMPLEMENT_INLINES)
+#if BULP_CAN_INLINE || defined(BULP_INTERNAL_IMPLEMENT_INLINE_FUNCTIONS)
 BULP_INLINE void bulp_buffer_append_small(BulpBuffer    *buffer, 
                                          unsigned      length,
                                          const void   *data)

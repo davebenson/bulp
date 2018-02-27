@@ -173,6 +173,45 @@ too_short:
   return 0;
 }
 
+#if 0
+BULP_INLINE unsigned
+bulp_utf8_char_encode (unsigned unicode,
+                       uint8_t *bytes_out)
+{
+  if (unicode < (1<<7))
+    {
+      bytes_out[0] = unicode;
+      return 1;
+    }
+  else if (unicode < (1<<10))
+    {
+      bytes_out[0] = 0xc0 | (unicode >> 6)
+      bytes_out[1] = 0x80 | (unicode & 0x3f);
+      return 2;
+    }
+  else if (unicode < (1<<16))
+    {
+      bytes_out[0] = 0xe0 | (unicode >> 12)
+      bytes_out[1] = 0x80 | ((unicode >> 6) & 0x3f);
+      bytes_out[2] = 0x80 | (unicode & 0x3f);
+      return 3;
+    }
+  else if (unicode < (1<<21))
+    {
+      bytes_out[0] = 0xf0 | (unicode >> 18)
+      bytes_out[1] = 0x80 | ((unicode >> 12) & 0x3f);
+      bytes_out[2] = 0x80 | ((unicode >> 6) & 0x3f);
+      bytes_out[3] = 0x80 | (unicode & 0x3f);
+      return 3;
+    }
+  else
+    {
+      assert(0);
+      return 0;
+    }
+}
+#endif
+
 BULP_INLINE BulpUTF16SurrogateType
 bulp_utf16_surrogate_type (uint16_t utf16)
 {

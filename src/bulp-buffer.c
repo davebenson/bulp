@@ -39,7 +39,9 @@
 
 #include <alloca.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/uio.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdio.h>      /* for vsnprintf() */
@@ -75,7 +77,7 @@ new_native_fragment()
 {
   BulpBufferFragment *fragment;
 #if BULP_DEBUG_BUFFER_ALLOCATIONS
-  fragment = (BulpBufferFragment *) bulp_malloc (BUF_CHUNK_SIZE);
+  fragment = (BulpBufferFragment *) malloc (BUF_CHUNK_SIZE);
   fragment->buf_max_size = BUF_CHUNK_SIZE - sizeof (BulpBufferFragment);
 #else  /* optimized (?) */
   if (recycling_stack)
@@ -86,57 +88,60 @@ new_native_fragment()
     }
   else
     {
-      fragment = (BulpBufferFragment *) bulp_malloc (BUF_CHUNK_SIZE);
+      fragment = (BulpBufferFragment *) malloc (BUF_CHUNK_SIZE);
       fragment->buf_max_size = BUF_CHUNK_SIZE - sizeof (BulpBufferFragment);
     }
 #endif	/* !BULP_DEBUG_BUFFER_ALLOCATIONS */
   fragment->buf_start = fragment->buf_length = 0;
   fragment->next = 0;
   fragment->buf = (uint8_t *) (fragment + 1);
-  fragment->is_foreign = 0;
+  fragment->fragment_type = BULP_BUFFER_FRAGMENT_ONE_ALLOC;
   return fragment;
 }
 
 static BulpBufferFragment *
 new_foreign_fragment (unsigned             length,
                       const void          *ptr,
-		      BulpDestroyNotify     destroy,
+		      BulpBufferFragmentDestroy     destroy,
 		      void                *ddata)
 {
-  BulpBufferFragment *fragment;
-  fragment = BULP_NEW (BulpBufferFragment);
-  fragment->is_foreign = 1;
-  fragment->buf_start = 0;
-  fragment->buf_length = length;
-  fragment->buf_max_size = length;
-  fragment->next = NULL;
-  fragment->buf = (uint8_t *) ptr;
+  BulpBufferFragmentGeneric *fragment;
+  fragment = malloc (sizeof (BulpBufferFragmentGeneric));
+  fragment->base_fragment.fragment_type = BULP_BUFFER_FRAGMENT_GENERIC;
+  fragment->base_fragment.buf_start = 0;
+  fragment->base_fragment.buf_length = length;
+  fragment->base_fragment.buf_max_size = length;
+  fragment->base_fragment.next = NULL;
+  fragment->base_fragment.buf = (uint8_t *) ptr;
   fragment->destroy = destroy;
   fragment->destroy_data = ddata;
-  return fragment;
+  return &fragment->base_fragment;
 }
 
 #if BULP_DEBUG_BUFFER_ALLOCATIONS
 #define recycle(fragment) do{ \
     if (fragment->is_foreign && fragment->destroy != NULL) \
       fragment->destroy (fragment->destroy_data); \
-    bulp_free (fragment); \
+    free (fragment); \
    }while(0)
 #else	/* optimized (?) */
 static void
 recycle(BulpBufferFragment* fragment)
 {
-  if (fragment->is_foreign)
+  if (fragment->fragment_type == BULP_BUFFER_FRAGMENT_GENERIC)
     {
-      if (fragment->destroy)
-        fragment->destroy (fragment->destroy_data);
-      bulp_free (fragment);
+      BulpBufferFragmentGeneric *gen = (BulpBufferFragmentGeneric*) fragment;
+      if (gen->destroy)
+        gen->destroy (gen->destroy_data, gen);
+      free (gen);
       return;
     }
+  if (fragment->fragment_type != BULP_BUFFER_FRAGMENT_ONE_ALLOC)
+    return;
 #if defined(MAX_RECYCLED)
   if (num_recycled >= MAX_RECYCLED)
     {
-      bulp_free (fragment);
+      free (fragment);
       return;
     }
 #endif
@@ -161,7 +166,7 @@ _bulp_buffer_cleanup_recycling_bin ()
     {
       BulpBufferFragment *next;
       next = recycling_stack->next;
-      bulp_free (recycling_stack);
+      free (recycling_stack);
       recycling_stack = next;
     }
   num_recycled = 0;
@@ -184,7 +189,7 @@ bulp_buffer_init(BulpBuffer *buffer)
 }
 
 #if defined(BULP_DEBUG) || BULP_DEBUG_BUFFER_ALLOCATIONS
-static inline bulp_boolean
+static inline bulp_bool
 verify_buffer (const BulpBuffer *buffer)
 {
   const BulpBufferFragment *fragment;
@@ -302,7 +307,7 @@ void
 bulp_buffer_append_string(BulpBuffer  *buffer,
                          const char *string)
 {
-  bulp_return_if_fail (string != NULL, "string must be non-null");
+  assert (string != NULL);
   bulp_buffer_append (buffer, strlen (string), string);
 }
 
@@ -380,7 +385,7 @@ bulp_buffer_read(BulpBuffer    *buffer,
 	}
     }
   buffer->size -= rv;
-  bulp_assert (rv == orig_max_length || buffer->size == 0);
+  assert (rv == orig_max_length || buffer->size == 0);
   CHECK_INTEGRITY (buffer);
   return rv;
 }
@@ -464,7 +469,7 @@ bulp_buffer_read_line(BulpBuffer *buffer)
     }
   if (at == NULL)
     return NULL;
-  rv = bulp_malloc (length + 1);
+  rv = malloc (length + 1);
   /* If we found a newline, read it out, truncating
    * it with NUL before we return from the function... */
   if (at)
@@ -495,7 +500,7 @@ bulp_buffer_parse_string0(BulpBuffer *buffer)
   char *rv;
   if (index0 < 0)
     return NULL;
-  rv = bulp_malloc (index0 + 1);
+  rv = malloc (index0 + 1);
   bulp_buffer_read (buffer, index0 + 1, rv);
   return rv;
 }
@@ -677,7 +682,7 @@ bulp_buffer_writev_len (BulpBuffer *read_from,
   return rv;
 }
 
-bulp_boolean
+bulp_bool
 bulp_buffer_write_all_to_fd (BulpBuffer       *read_from,
 		            int              fd,
                             BulpError       **error)
@@ -686,8 +691,7 @@ bulp_buffer_write_all_to_fd (BulpBuffer       *read_from,
     {
       if (bulp_buffer_writev (read_from, fd) < 0)
         {
-          bulp_set_error (error, "error writing to fd %d: %s",
-                         fd, strerror (errno));
+          *error = bulp_error_new_file_write (errno);
           return BULP_FALSE;
         }
     }
@@ -1008,7 +1012,7 @@ bulp_buffer_transfer(BulpBuffer *dst,
 void bulp_buffer_append_foreign (BulpBuffer        *buffer,
 				unsigned          length,
                                 const void *     data,
-				BulpDestroyNotify    destroy,
+				BulpBufferFragmentDestroy    destroy,
 				void *          destroy_data)
 {
   BulpBufferFragment *fragment;
@@ -1016,7 +1020,7 @@ void bulp_buffer_append_foreign (BulpBuffer        *buffer,
   if (length == 0)
     {
       if (destroy)
-        destroy (destroy_data);
+        destroy (destroy_data, NULL);
       return;
     }
 
@@ -1040,7 +1044,7 @@ void bulp_buffer_append_foreign (BulpBuffer        *buffer,
 /* Test to see if a sequence of buffer fragments
  * starts with a particular NUL-terminated string.
  */
-static bulp_boolean
+static bulp_bool
 fragment_n_str(BulpBufferFragment   *fragment,
                unsigned                frag_index,
                const char          *string)
@@ -1217,16 +1221,16 @@ void     bulp_buffer_vprintf             (BulpBuffer    *buffer,
       if (frag != buffer->last_frag)
         recycle (frag);
 
-      slab = bulp_malloc (req + 1);
+      slab = malloc (req + 1);
       vsnprintf (slab, req + 1, format, args);
 
       if (req - rem < BUF_CHUNK_SIZE)
         {
           bulp_buffer_append (buffer, req, slab);
-          bulp_free (slab);
+          free (slab);
         }
       else
-        bulp_buffer_append_foreign (buffer, req, slab, bulp_free, slab);
+        bulp_buffer_append_foreign (buffer, req, slab, (BulpBufferFragmentDestroy) free, slab);
     }
 }
 
@@ -1549,7 +1553,7 @@ bulp_buffer_fragment_peek (BulpBufferFragment *fragment,
   return rv;
 }
 
-bulp_boolean bulp_buffer_fragment_advance (BulpBufferFragment **frag_inout,
+bulp_bool    bulp_buffer_fragment_advance (BulpBufferFragment **frag_inout,
                                          unsigned           *offset_inout,
                                          unsigned            skip)
 {
@@ -1680,13 +1684,13 @@ bulp_buffer_fragment_free (BulpBufferFragment *fragment)
 
 char *bulp_buffer_empty_to_string (BulpBuffer *buffer)
 {
-  char *rv = bulp_malloc (buffer->size + 1);
+  char *rv = malloc (buffer->size + 1);
   rv[buffer->size] = 0;
   bulp_buffer_read (buffer, buffer->size, rv);
   return rv;
 }
 
-bulp_boolean bulp_buffer_dump (BulpBuffer          *buffer,
+bulp_bool    bulp_buffer_dump (BulpBuffer          *buffer,
                              const char         *filename,
                              BulpBufferDumpFlags  flags,
                              BulpError          **error)
@@ -1694,19 +1698,10 @@ bulp_boolean bulp_buffer_dump (BulpBuffer          *buffer,
   // exactly one of BULP_BUFFER_DUMP_NO_DRAIN or BULP_BUFFER_DUMP_DRAIN
   // must be given.
   BulpBufferDumpFlags drain_flags = (flags & (BULP_BUFFER_DUMP_DRAIN|BULP_BUFFER_DUMP_NO_DRAIN));
-  bulp_assert (drain_flags == BULP_BUFFER_DUMP_NO_DRAIN
-           || drain_flags == BULP_BUFFER_DUMP_DRAIN);
+  assert (drain_flags == BULP_BUFFER_DUMP_NO_DRAIN
+       || drain_flags == BULP_BUFFER_DUMP_DRAIN);
 
-  BulpError *fatal_error_buf = NULL;
-  if (flags & BULP_BUFFER_DUMP_FATAL_ERRORS)
-    error = &fatal_error_buf;
-  BulpDirOpenfdFlags open_flags = BULP_DIR_OPENFD_MAY_CREATE
-                               | BULP_DIR_OPENFD_WRITABLE
-                               | BULP_DIR_OPENFD_TRUNCATE
-                               | ((flags & BULP_BUFFER_DUMP_NO_CREATE_DIRS) ? BULP_DIR_OPENFD_NO_MKDIR : 0)
-                               ;
-  unsigned mode = (flags & BULP_BUFFER_DUMP_EXECUTABLE) ? 0777 : 0666;
-  int fd = bulp_dir_openfd (NULL, filename, open_flags, mode, error);
+  int fd = open (filename, O_CREAT|O_TRUNC|O_WRONLY, 0666);
   if (fd < 0)
     goto error;
   unsigned n_frags = 0;
@@ -1728,8 +1723,7 @@ retry_writev:
     {
       if (errno == EINTR)
         goto retry_writev;
-      bulp_set_error (error, "error writing to '%s': %s",
-                     filename, strerror (errno));
+      *error = bulp_error_new_file_write (errno);
       unlink (filename);
       goto error;
     }
@@ -1755,14 +1749,13 @@ retry_writev:
       goto retry_writev;
     }
   else
-    bulp_assert ((size_t) writev_rv == buffer->size);
+    assert ((size_t) writev_rv == buffer->size);
   close (fd);
   if (flags & BULP_BUFFER_DUMP_DRAIN)
     bulp_buffer_discard (buffer, buffer->size);
   return BULP_TRUE;
 
 error:
-  if (flags & BULP_BUFFER_DUMP_FATAL_ERRORS)
-    bulp_error ("error writing to %s: %s", filename, fatal_error_buf->message);
+  bulp_die ("error writing to %s: %s", filename, (*error)->message);
   return BULP_FALSE;
 }

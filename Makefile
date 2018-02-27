@@ -6,9 +6,12 @@ lib/libbulp.a: \
 obj/bulp-namespace-parser.o \
 obj/bulp-namespace.o \
 obj/bulp-error.o \
-obj/bulp-format-bit-packing.o \
+obj/bulp-buffer.o \
+obj/bulp-mem-pool.o \
+obj/bulp-format-packed.o \
 obj/bulp-format.o \
-obj/bulp-ints.o \
+obj/bulp-namespace-toplevel-formats.o \
+obj/bulp-inlines.o \
 obj/bulp-json-helpers.o \
 obj/bulp-util.o
 	@mkdir -p lib

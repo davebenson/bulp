@@ -31,11 +31,6 @@ typedef struct {
                                 BulpMemPool *pool,
                                 BulpError **error);
 
-  void      (*packed_to_json)  (BulpFormat  *format,
-                                ...);
-  void      (*json_to_packed)  (BulpFormat  *format,
-                                ...);
-
   void      (*destruct_format) (BulpFormat  *format);
 } BulpFormatVFuncs;
 
@@ -120,10 +115,6 @@ typedef struct {
   const char *name;
   unsigned n_bits;
 
-  /* the remaining fields are computed by bulp_format_packed_new() or by
-   * the machine-generated code. */
-  unsigned packed_bit_offset;                   // XXX: version dependent, do not use
-
   /* machine-dependent */
   unsigned native_byte_offset;
   uint8_t native_word_size;                     // 1,2,4
@@ -131,7 +122,7 @@ typedef struct {
 
 unsigned bulp_packed_element_get_native   (BulpFormatPackedElement *elt,
                                            const void        *native_instance);
-unsigned bulp_packed_element_set_native   (BulpFormatPackedElement *elt,
+void     bulp_packed_element_set_native   (BulpFormatPackedElement *elt,
                                            void              *native_instance,
                                            unsigned           value);
 #if 0
@@ -149,6 +140,8 @@ typedef struct BulpFormatPacked {
   BulpFormatBase base;
   unsigned n_elements;
   BulpFormatPackedElement *elements;
+  BulpFormatPackedElement **elements_by_name;
+  unsigned total_bit_size;
 } BulpFormatPacked;
 
 BulpFormat *bulp_format_packed_new (size_t n_elts,
@@ -417,8 +410,3 @@ bulp_bool      bulp_namespace_parse_data       (BulpNamespace *ns,
 BulpNamespace *bulp_namespace_ref (BulpNamespace *ns);
 void           bulp_namespace_unref (BulpNamespace *ns);
 
-
-// private
-extern BulpFormatInt bulp_format_ints_global[14];
-extern BulpFormatString bulp_format_strings_global[4];
-extern BulpFormatBinaryData bulp_format_binary_data_global;

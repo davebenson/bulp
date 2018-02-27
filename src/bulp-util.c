@@ -19,6 +19,18 @@ bulp_die (const char *format, ...)
   abort();
 }
 
+void
+bulp_warn (const char *format, ...)
+{
+  fprintf(stderr, "*** WARNING *** ");
+  va_list args;
+  va_start (args, format);
+  vfprintf (stderr, format, args);
+  va_end (args);
+  fprintf(stderr, "\n");
+  abort();
+}
+
 uint8_t *bulp_util_file_load (const char *filename, 
                               size_t     *length_out,
                               BulpError **error)

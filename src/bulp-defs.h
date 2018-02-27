@@ -1,4 +1,12 @@
 
+/// TODO must be determined by configure
+#define BULP_INT8_ALIGNOF    1
+#define BULP_INT16_ALIGNOF   2
+#define BULP_INT32_ALIGNOF   4
+#define BULP_INT64_ALIGNOF   8
+#define BULP_FLOAT32_ALIGNOF   4
+#define BULP_FLOAT64_ALIGNOF   8
+
 typedef int bulp_bool;
 #define BULP_FALSE 0
 #define BULP_TRUE  1
@@ -22,9 +30,19 @@ typedef int bulp_bool;
 #define BULP_LIKELY(cond)   (cond)
 #define BULP_UNLIKELY(cond)   (cond)
 
-#define BULP_INLINE inline
-#define BULP_CAN_INLINE 1
+#ifdef BULP_INTERNAL_IMPLEMENT_INLINE_FUNCTIONS
+#  define BULP_CAN_INLINE 0
+#else
+#  ifndef BULP_CAN_INLINE
+#    define BULP_CAN_INLINE 1
+#  endif
+#endif
 
+#if BULP_CAN_INLINE
+#  define BULP_INLINE inline
+#else
+#  define BULP_INLINE
+#endif
 
 #define BULP_LBRACE_CHAR    '{'
 #define BULP_LBRACKET_CHAR  '['

@@ -46,6 +46,15 @@ BulpError *bulp_error_new_file_read (int errno_value)
   return rv;
 }
 
+BulpError *bulp_error_new_file_write (int errno_value)
+{
+  BulpError *rv = bulp_error_new_protected (BULP_ERROR_FILE_WRITE_FAILURE,
+                                            0, NULL,
+                                            "error writing file: %s",
+                                            strerror (errno_value));
+  return rv;
+}
+
 BulpError *bulp_error_out_of_memory (void)
 {
   BulpError *rv = bulp_error_new_protected (BULP_ERROR_OUT_OF_MEMORY,
@@ -98,6 +107,27 @@ BulpError *bulp_error_new_parse (const char *filename,
                                             filename, line_no,
                                             formatted_str);
   free (formatted_str);
+  return rv;
+}
+
+BulpError *bulp_error_new_too_short (const char *format,
+                                     ...)
+{
+  va_list args;
+  va_start (args, format);
+  BulpError *rv = bulp_error_new_protected_valist (BULP_ERROR_TOO_SHORT, 0, NULL,
+              "too short: ", format, args);
+  va_end (args);
+  return rv;
+}
+BulpError *bulp_error_new_bad_data (const char *format,
+                                    ...)
+{
+  va_list args;
+  va_start (args, format);
+  BulpError *rv = bulp_error_new_protected_valist (BULP_ERROR_BAD_DATA, 0, NULL,
+              "too short: ", format, args);
+  va_end (args);
   return rv;
 }
 
@@ -201,3 +231,32 @@ BulpError *bulp_error_new_protected (BulpErrorCode code,
   return rv;
 }
 
+BulpError *bulp_error_new_protected_valist (BulpErrorCode code,
+                                     size_t        sizeof_error,                // or 0 for sizeof(BulpError)
+                                     void        (*destroy)(BulpError*),        // or NULL for base destroy
+                                     const char *premessage,    /* or NULL */
+                                     const char   *format,
+                                     va_list args)
+{
+  if (sizeof_error == 0)
+    sizeof_error = sizeof (BulpError);
+  else
+    assert (sizeof_error >= sizeof (BulpError));
+  if (destroy == NULL)
+    destroy = bulp_error_base_destroy_protected;
+  char *msg;
+  vasprintf (&msg, format, args);
+  if (premessage != NULL)
+    {
+      char *newmsg;
+      asprintf(&newmsg, "%s%s", premessage, msg);
+      free (msg);
+      msg = newmsg;
+    }
+  BulpError *rv = malloc (sizeof_error);
+  rv->code = code;
+  rv->ref_count = 1;
+  rv->message = msg;
+  rv->destroy = destroy;
+  return rv;
+}

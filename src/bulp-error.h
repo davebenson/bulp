@@ -10,10 +10,13 @@ typedef enum {
   BULP_ERROR_FILE_OPEN_FAILURE,
   BULP_ERROR_FILE_STAT_FAILURE,
   BULP_ERROR_FILE_READ_FAILURE,
+  BULP_ERROR_FILE_WRITE_FAILURE,
   BULP_ERROR_UNKNOWN_FORMAT,
   BULP_ERROR_OPTIONAL_OPTIONAL,
   BULP_ERROR_UTF8_BAD,
   BULP_ERROR_UTF8_SHORT,
+  BULP_ERROR_TOO_SHORT,
+  BULP_ERROR_BAD_DATA,
 } BulpErrorCode;
 
 typedef struct BulpError BulpError;
@@ -39,6 +42,7 @@ BulpError * bulp_error_new_file_not_found (const char *filename);
 BulpError * bulp_error_new_file_open_error (const char *filename, int errno_value);
 BulpError * bulp_error_new_stat_failed (const char *filename, int errno_value);
 BulpError * bulp_error_new_file_read (int errno_value);
+BulpError * bulp_error_new_file_write (int errno_value);
 BulpError *bulp_error_out_of_memory (void);
 BulpError *bulp_error_new_unexpected_character (uint8_t c, const char *filename, unsigned lineno);
 BulpError *bulp_error_new_premature_eof (const char *filename,
@@ -56,6 +60,8 @@ BulpError *bulp_error_new_optional_optional (const char *filename,
                                              const char *base_format_name);
 BulpError *bulp_error_new_too_short (const char *format,
                                      ...) BULP_PRINTF_LIKE(1,2);
+BulpError *bulp_error_new_bad_data (const char *format,
+                                    ...) BULP_PRINTF_LIKE(1,2);
 
 
 void       bulp_error_append_message (BulpError *error,
@@ -78,3 +84,9 @@ BulpError *bulp_error_new_protected (BulpErrorCode code,
                                      const char   *format,
                                      ...) BULP_PRINTF_LIKE(4,5);
 
+BulpError *bulp_error_new_protected_valist (BulpErrorCode code,
+                                     size_t        sizeof_error,                // or 0 for sizeof(BulpError)
+                                     void        (*destroy)(BulpError*),        // or NULL for base destroy
+                                     const char *premessage,    /* or NULL */
+                                     const char   *format,
+                                     va_list args);

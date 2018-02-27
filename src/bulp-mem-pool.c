@@ -1,5 +1,4 @@
-#include "bulp-common.h"
-#include "bulp-mem-pool.h"
+#include "bulp.h"
 #include <string.h>
 
 #define ALIGN(size)	        _BULP_MEM_POOL_ALIGN(size)
@@ -75,7 +74,7 @@ bulp_mem_pool_must_alloc   (BulpMemPool     *pool,
   if (size < CHUNK_SIZE)
     {
       /* Allocate a new chunk. */
-      void * carved = bulp_malloc (CHUNK_SIZE + sizeof (void *));
+      void * carved = malloc (CHUNK_SIZE + sizeof (void *));
       SLAB_GET_NEXT_PTR (carved) = pool->all_chunk_list;
       pool->all_chunk_list = carved;
       rv = carved;
@@ -86,7 +85,7 @@ bulp_mem_pool_must_alloc   (BulpMemPool     *pool,
   else
     {
       /* Allocate a chunk of exactly the right size. */
-      void * carved = bulp_malloc (size + sizeof (void *));
+      void * carved = malloc (size + sizeof (void *));
       if (pool->all_chunk_list)
 	{
 	  SLAB_GET_NEXT_PTR (carved) = SLAB_GET_NEXT_PTR (pool->all_chunk_list);
@@ -171,7 +170,7 @@ bulp_mem_pool_destruct     (BulpMemPool     *pool)
   while (slab)
     {
       void * new_slab = SLAB_GET_NEXT_PTR (slab);
-      bulp_free (slab);
+      free (slab);
       slab = new_slab;
     }
 #ifdef BULP_DEBUG
@@ -222,7 +221,7 @@ bulp_mem_pool_fixed_alloc     (BulpMemPoolFixed     *pool)
     }
   if (pool->pieces_left == 0)
     {
-      void * slab = bulp_malloc (256 * pool->piece_size + sizeof (void *));
+      void * slab = malloc (256 * pool->piece_size + sizeof (void *));
       SLAB_GET_NEXT_PTR (slab) = pool->slab_list;
       pool->slab_list = slab;
       pool->chunk = slab;
@@ -236,7 +235,7 @@ bulp_mem_pool_fixed_alloc     (BulpMemPoolFixed     *pool)
     return rv;
   }
 #else
-  return bulp_malloc (pool->piece_size);
+  return malloc (pool->piece_size);
 #endif
 }
 
@@ -269,7 +268,7 @@ void     bulp_mem_pool_fixed_free      (BulpMemPoolFixed     *pool,
   SLAB_GET_NEXT_PTR (from_pool) = pool->free_list;
   pool->free_list = from_pool;
 #else
-  bulp_free (from_pool);
+  free (from_pool);
 #endif
 }
 
@@ -285,6 +284,6 @@ void     bulp_mem_pool_fixed_destruct  (BulpMemPoolFixed     *pool)
     {
       void * kill = pool->slab_list;
       pool->slab_list = SLAB_GET_NEXT_PTR (kill);
-      bulp_free (kill);
+      free (kill);
     }
 }
