@@ -3,7 +3,7 @@ BULP_INLINE size_t bulp_uint8_get_packed_size   (uint8_t v);
 BULP_INLINE size_t bulp_uint8_pack              (uint8_t v,
                                                  uint8_t *out);
 BULP_INLINE size_t bulp_uint8_pack_to           (uint8_t v,
-                                                 BulpBuffer *out);
+                                                 BulpDataBuilder *out);
 BULP_INLINE size_t bulp_uint8_unpack            (size_t packed_len,
                                                  const uint8_t *packed_data,
                                                  uint8_t *out,
@@ -12,7 +12,7 @@ BULP_INLINE size_t bulp_uint16_get_packed_size  (uint16_t v);
 BULP_INLINE size_t bulp_uint16_pack             (uint16_t v,
                                                  uint8_t *out);
 BULP_INLINE size_t bulp_uint16_pack_to          (uint16_t v,
-                                                 BulpBuffer *out);
+                                                 BulpDataBuilder *out);
 BULP_INLINE size_t bulp_uint16_unpack           (size_t packed_len,
                                                  const uint8_t *packed_data,
                                                  uint16_t *out,
@@ -21,7 +21,7 @@ BULP_INLINE size_t bulp_uint32_get_packed_size  (uint32_t v);
 BULP_INLINE size_t bulp_uint32_pack             (uint32_t v,
                                                  uint8_t *out);
 BULP_INLINE size_t bulp_uint32_pack_to          (uint32_t v,
-                                                 BulpBuffer *out);
+                                                 BulpDataBuilder *out);
 BULP_INLINE size_t bulp_uint32_unpack           (size_t packed_len,
                                                  const uint8_t *packed_data,
                                                  uint32_t *out,
@@ -30,7 +30,7 @@ BULP_INLINE size_t bulp_uint64_get_packed_size  (uint64_t v);
 BULP_INLINE size_t bulp_uint64_pack             (uint64_t v,
                                                  uint8_t *out);
 BULP_INLINE size_t bulp_uint64_pack_to          (uint64_t v,
-                                                 BulpBuffer *out);
+                                                 BulpDataBuilder *out);
 BULP_INLINE size_t bulp_uint64_unpack           (size_t packed_len,
                                                  const uint8_t *packed_data,
                                                  uint64_t *out,
@@ -41,7 +41,7 @@ BULP_INLINE size_t bulp_int8_get_packed_size    (int8_t v);
 BULP_INLINE size_t bulp_int8_pack               (int8_t v,
                                                  uint8_t *out);
 BULP_INLINE size_t bulp_int8_pack_to            (int8_t v,
-                                                 BulpBuffer *out);
+                                                 BulpDataBuilder *out);
 BULP_INLINE size_t bulp_int8_unpack             (size_t packed_len,
                                                  const uint8_t *packed_data,
                                                  int8_t *out,
@@ -50,7 +50,7 @@ BULP_INLINE size_t bulp_int16_get_packed_size   (int16_t v);
 BULP_INLINE size_t bulp_int16_pack              (int16_t v,
                                                  uint8_t *out);
 BULP_INLINE size_t bulp_int16_pack_to           (int16_t v,
-                                                 BulpBuffer *out);
+                                                 BulpDataBuilder *out);
 BULP_INLINE size_t bulp_int16_unpack            (size_t packed_len,
                                                  const uint8_t *packed_data,
                                                  int16_t *out,
@@ -59,7 +59,7 @@ BULP_INLINE size_t bulp_int32_get_packed_size   (int32_t v);
 BULP_INLINE size_t bulp_int32_pack              (int32_t v,
                                                  uint8_t *out);
 BULP_INLINE size_t bulp_int32_pack_to           (int32_t v,
-                                                 BulpBuffer *out);
+                                                 BulpDataBuilder *out);
 BULP_INLINE size_t bulp_int32_unpack            (size_t packed_len,
                                                  const uint8_t *packed_data,
                                                  int32_t *out,
@@ -68,7 +68,7 @@ BULP_INLINE size_t bulp_int64_get_packed_size   (int64_t v);
 BULP_INLINE size_t bulp_int64_pack              (int64_t v,
                                                  uint8_t *out);
 BULP_INLINE size_t bulp_int64_pack_to           (int64_t v,
-                                                 BulpBuffer *out);
+                                                 BulpDataBuilder *out);
 BULP_INLINE size_t bulp_int64_unpack            (size_t packed_len,
                                                  const uint8_t *packed_data,
                                                  int64_t *out,
@@ -79,7 +79,7 @@ BULP_INLINE size_t bulp_ushort_get_packed_size  (uint16_t v);
 BULP_INLINE size_t bulp_ushort_pack             (uint16_t v,
                                                  uint8_t *out);
 BULP_INLINE size_t bulp_ushort_pack_to          (uint16_t v,
-                                                 BulpBuffer *out);
+                                                 BulpDataBuilder *out);
 BULP_INLINE size_t bulp_ushort_unpack           (size_t packed_len,
                                                  const uint8_t *packed_data,
                                                  uint16_t *out,
@@ -88,7 +88,7 @@ BULP_INLINE size_t bulp_uint_get_packed_size    (uint32_t v);
 BULP_INLINE size_t bulp_uint_pack               (uint32_t v,
                                                  uint8_t *out);
 BULP_INLINE size_t bulp_uint_pack_to            (uint32_t v,
-                                                 BulpBuffer *out);
+                                                 BulpDataBuilder *out);
 BULP_INLINE size_t bulp_uint_unpack             (size_t packed_len,
                                                  const uint8_t *packed_data,
                                                  uint32_t *out,
@@ -97,7 +97,7 @@ BULP_INLINE size_t bulp_ulong_get_packed_size   (uint64_t v);
 BULP_INLINE size_t bulp_ulong_pack              (uint64_t v,
                                                  uint8_t *out);
 BULP_INLINE size_t bulp_ulong_pack_to           (uint64_t v,
-                                                 BulpBuffer *out);
+                                                 BulpDataBuilder *out);
 BULP_INLINE size_t bulp_ulong_unpack            (size_t packed_len,
                                                  const uint8_t *packed_data,
                                                  uint64_t *out,
@@ -115,7 +115,7 @@ BULP_INLINE size_t bulp_short_get_packed_size   (int16_t v);
 BULP_INLINE size_t bulp_short_pack              (int16_t v,
                                                  uint8_t *out);
 BULP_INLINE size_t bulp_short_pack_to           (int16_t v,
-                                                 BulpBuffer *out);
+                                                 BulpDataBuilder *out);
 BULP_INLINE size_t bulp_short_unpack            (size_t packed_len,
                                                  const uint8_t *packed_data,
                                                  int16_t *out,
@@ -124,7 +124,7 @@ BULP_INLINE size_t bulp_int_get_packed_size     (int32_t v);
 BULP_INLINE size_t bulp_int_pack                (int32_t v,
                                                  uint8_t *out);
 BULP_INLINE size_t bulp_int_pack_to             (int32_t v,
-                                                 BulpBuffer *out);
+                                                 BulpDataBuilder *out);
 BULP_INLINE size_t bulp_int_unpack              (size_t packed_len,
                                                  const uint8_t *packed_data,
                                                  int32_t *out,
@@ -133,7 +133,7 @@ BULP_INLINE size_t bulp_long_get_packed_size    (int64_t v);
 BULP_INLINE size_t bulp_long_pack               (int64_t v,
                                                  uint8_t *out);
 BULP_INLINE size_t bulp_long_pack_to            (int64_t v,
-                                                 BulpBuffer *out);
+                                                 BulpDataBuilder *out);
 BULP_INLINE size_t bulp_long_unpack             (size_t packed_len,
                                                  const uint8_t *packed_data,
                                                  int64_t *out,
@@ -155,9 +155,9 @@ bulp_uint8_pack              (uint8_t v,
 }
 BULP_INLINE size_t
 bulp_uint8_pack_to           (uint8_t v,
-                              BulpBuffer *out)
+                              BulpDataBuilder *out)
 {
-  bulp_buffer_append_byte (out, v);
+  bulp_data_builder_append_byte (out, v);
   return 1;
 }
 BULP_INLINE size_t
@@ -195,13 +195,13 @@ bulp_uint16_pack             (uint16_t v,
 }
 BULP_INLINE size_t
 bulp_uint16_pack_to          (uint16_t v,
-                              BulpBuffer *out)
+                              BulpDataBuilder *out)
 {
 #if BULP_IS_LITTLE_ENDIAN
-  bulp_buffer_append_small (out, 2, &v);
+  bulp_data_builder_append (out, 2, &v);
 #else
   uint8_t buf[2] = { v, v >> 8 };
-  bulp_buffer_append_small (out, 2, buf);
+  bulp_data_builder_append (out, 2, buf);
 #endif
   return 2;
 }
@@ -247,17 +247,17 @@ bulp_uint32_pack             (uint32_t v,
 }
 BULP_INLINE size_t
 bulp_uint32_pack_to          (uint32_t v,
-                              BulpBuffer *out)
+                              BulpDataBuilder *out)
 {
 #if BULP_IS_LITTLE_ENDIAN
-  bulp_buffer_append_small (out, 4, &v);
+  bulp_data_builder_append (out, 4, &v);
 #else
   uint8_t buf[4];
   buf[0] = v;
   buf[1] = v >> 8;
   buf[2] = v >> 16;
   buf[3] = v >> 24;
-  bulp_buffer_append_small (out, 4, buf);
+  bulp_data_builder_append (out, 4, buf);
 #endif
   return 4;
 }
@@ -310,14 +310,14 @@ bulp_uint64_pack             (uint64_t v,
 }
 BULP_INLINE size_t
 bulp_uint64_pack_to          (uint64_t v,
-                              BulpBuffer *out)
+                              BulpDataBuilder *out)
 {
 #if BULP_IS_LITTLE_ENDIAN
-  bulp_buffer_append_small (out, 8, &v);
+  bulp_data_builder_append (out, 8, &v);
 #else
   uint8_t buf[8];
   bulp_uint64_pack (v, buf);
-  bulp_buffer_append_small (out, 8, buf);
+  bulp_data_builder_append (out, 8, buf);
 #endif
   return 8;
 }
@@ -352,7 +352,7 @@ BULP_INLINE size_t bulp_int8_get_packed_size    (int8_t v);
 BULP_INLINE size_t bulp_int8_pack               (int8_t v,
                                                  uint8_t *out);
 BULP_INLINE size_t bulp_int8_pack_to            (int8_t v,
-                                                 BulpBuffer *out);
+                                                 BulpDataBuilder *out);
 BULP_INLINE size_t bulp_int8_unpack             (size_t packed_len,
                                                  const uint8_t *packed_data,
                                                  int8_t *out,
@@ -361,7 +361,7 @@ BULP_INLINE size_t bulp_int16_get_packed_size   (int16_t v);
 BULP_INLINE size_t bulp_int16_pack              (int16_t v,
                                                  uint8_t *out);
 BULP_INLINE size_t bulp_int16_pack_to           (int16_t v,
-                                                 BulpBuffer *out);
+                                                 BulpDataBuilder *out);
 BULP_INLINE size_t bulp_int16_unpack            (size_t packed_len,
                                                  const uint8_t *packed_data,
                                                  int16_t *out,
@@ -370,7 +370,7 @@ BULP_INLINE size_t bulp_int32_get_packed_size   (int32_t v);
 BULP_INLINE size_t bulp_int32_pack              (int32_t v,
                                                  uint8_t *out);
 BULP_INLINE size_t bulp_int32_pack_to           (int32_t v,
-                                                 BulpBuffer *out);
+                                                 BulpDataBuilder *out);
 BULP_INLINE size_t bulp_int32_unpack            (size_t packed_len,
                                                  const uint8_t *packed_data,
                                                  int32_t *out,
@@ -379,7 +379,7 @@ BULP_INLINE size_t bulp_int64_get_packed_size   (int64_t v);
 BULP_INLINE size_t bulp_int64_pack              (int64_t v,
                                                  uint8_t *out);
 BULP_INLINE size_t bulp_int64_pack_to           (int64_t v,
-                                                 BulpBuffer *out);
+                                                 BulpDataBuilder *out);
 BULP_INLINE size_t bulp_int64_unpack            (size_t packed_len,
                                                  const uint8_t *packed_data,
                                                  int64_t *out,
@@ -411,11 +411,11 @@ BULP_INLINE size_t bulp_ushort_pack             (uint16_t v,
     }
 }
 BULP_INLINE size_t bulp_ushort_pack_to          (uint16_t v,
-                                                 BulpBuffer *out)
+                                                 BulpDataBuilder *out)
 {
   uint8_t b[3];
   unsigned rv = bulp_ushort_pack (v, b);
-  bulp_buffer_append_small (out, rv, b);
+  bulp_data_builder_append (out, rv, b);
   return rv;
 }
 
@@ -503,11 +503,11 @@ bulp_uint_pack               (uint32_t v,
     }
 }
 BULP_INLINE size_t
-bulp_uint_pack_to (uint32_t v, BulpBuffer *out)
+bulp_uint_pack_to (uint32_t v, BulpDataBuilder *out)
 {
   uint8_t buf[5];
   size_t rv = bulp_uint_pack (v, buf);
-  bulp_buffer_append_small (out, rv, buf);
+  bulp_data_builder_append (out, rv, buf);
   return rv;
 }
 BULP_INLINE size_t
@@ -600,11 +600,11 @@ bulp_ulong_pack             (uint64_t v,
 }
 BULP_INLINE size_t
 bulp_ulong_pack_to          (uint64_t v,
-                             BulpBuffer *out)
+                             BulpDataBuilder *out)
 {
   uint8_t b[11];
   unsigned rv = bulp_ulong_pack (v, b);
-  bulp_buffer_append_small (out, rv, b);
+  bulp_data_builder_append (out, rv, b);
   return rv;
 }
 
@@ -664,7 +664,7 @@ BULP_INLINE size_t bulp_short_pack              (int16_t v,
   return bulp_ushort_pack (bulp_zigzag16 (v), out);
 }
 BULP_INLINE size_t bulp_short_pack_to           (int16_t v,
-                                                 BulpBuffer *out)
+                                                 BulpDataBuilder *out)
 {
   return bulp_ushort_pack_to (bulp_zigzag16 (v), out);
 }
@@ -723,7 +723,7 @@ bulp_int_pack (int32_t v, uint8_t *out)
   return bulp_uint_pack (bulp_zigzag32 (v), out);
 }
 BULP_INLINE size_t
-bulp_int_pack_to (int32_t v, BulpBuffer *out)
+bulp_int_pack_to (int32_t v, BulpDataBuilder *out)
 {
   return bulp_uint_pack_to (bulp_zigzag32 (v), out);
 }
@@ -771,7 +771,7 @@ bulp_long_pack (int64_t v, uint8_t *out)
   return bulp_ulong_pack (bulp_zigzag64 (v), out);
 }
 BULP_INLINE size_t
-bulp_long_pack_to (int64_t v, BulpBuffer *out)
+bulp_long_pack_to (int64_t v, BulpDataBuilder *out)
 {
   return bulp_ulong_pack_to (bulp_zigzag64 (v), out);
 }

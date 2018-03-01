@@ -55,6 +55,22 @@ BulpError *bulp_error_new_file_write (int errno_value)
   return rv;
 }
 
+BulpError *bulp_error_new_infinity_not_allowed (void)
+{
+  BulpError *rv = bulp_error_new_protected (BULP_ERROR_INFINITY,
+                                            0, NULL,
+                                            "infinity not allowed");
+  return rv;
+}
+
+BulpError *bulp_error_new_not_a_number (void)
+{
+  BulpError *rv = bulp_error_new_protected (BULP_ERROR_NOT_A_NUMBER,
+                                            0, NULL,
+                                            "not a number (NaN or denormal)");
+  return rv;
+}
+
 BulpError *bulp_error_out_of_memory (void)
 {
   BulpError *rv = bulp_error_new_protected (BULP_ERROR_OUT_OF_MEMORY,

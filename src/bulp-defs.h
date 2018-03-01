@@ -1,11 +1,5 @@
 
-/// TODO must be determined by configure
-#define BULP_INT8_ALIGNOF    1
-#define BULP_INT16_ALIGNOF   2
-#define BULP_INT32_ALIGNOF   4
-#define BULP_INT64_ALIGNOF   8
-#define BULP_FLOAT32_ALIGNOF   4
-#define BULP_FLOAT64_ALIGNOF   8
+
 
 typedef int bulp_bool;
 #define BULP_FALSE 0

@@ -15,6 +15,7 @@ typedef struct BulpError BulpError;
 #include "bulp-util.h"
 #include "bulp-buffer.h"
 #include "bulp-mem-pool.h"
+#include "bulp-data-builder.h"
 
 #include "bulp-format.h"                        /* also includes namespace support */
 

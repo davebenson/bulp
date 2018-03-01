@@ -2,7 +2,7 @@ BULP_INLINE size_t bulp_float32_get_packed_size (float v);
 BULP_INLINE size_t bulp_float32_pack            (float v,
                                                  uint8_t *out);
 BULP_INLINE size_t bulp_float32_pack_to         (float v,
-                                                 BulpBuffer *out);
+                                                 BulpDataBuilder *out);
 BULP_INLINE size_t bulp_float32_unpack          (size_t packed_len,
                                                  const uint8_t *packed_data,
                                                  float *out,
@@ -12,7 +12,7 @@ BULP_INLINE size_t bulp_float64_get_packed_size (double v);
 BULP_INLINE size_t bulp_float64_pack            (double v,
                                                  uint8_t *out);
 BULP_INLINE size_t bulp_float64_pack_to         (double v,
-                                                 BulpBuffer *out);
+                                                 BulpDataBuilder *out);
 BULP_INLINE size_t bulp_float64_unpack          (size_t packed_len,
                                                  const uint8_t *packed_data,
                                                  double *out,
@@ -41,14 +41,14 @@ bulp_float32_pack (float v, uint8_t *out)
   return 4;
 }
 BULP_INLINE size_t
-bulp_float32_pack_to (float v, BulpBuffer *b)
+bulp_float32_pack_to (float v, BulpDataBuilder *b)
 {
 #if BULP_IS_LITTLE_ENDIAN
-  bulp_buffer_append_small (b, 4, &v);
+  bulp_data_builder_append (b, 4, &v);
 #else
   uint8_t out[4];
   bulp_float32_pack (v, out);
-  bulp_buffer_append_small (b, 4, out);
+  bulp_data_builder_append (b, 4, out);
 #endif
   return 4;
 }
@@ -95,14 +95,14 @@ bulp_float64_pack (double v, uint8_t *out)
   return 8;
 }
 BULP_INLINE size_t
-bulp_float64_pack_to (double v, BulpBuffer *b)
+bulp_float64_pack_to (double v, BulpDataBuilder *b)
 {
 #if BULP_IS_LITTLE_ENDIAN
-  bulp_buffer_append_small (b, 8, &v);
+  bulp_data_builder_append (b, 8, &v);
 #else
   uint8_t out[8];
   bulp_float64_pack (v, out);
-  bulp_buffer_append_small (b, 8, out);
+  bulp_data_builder_append (b, 8, out);
 #endif
   return 8;
 }

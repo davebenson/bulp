@@ -1,6 +1,7 @@
 #include "bulp.h"
 #include "bulp-internals.h"
 #include <string.h>
+#include <math.h>
 
 #define DEFINE_BULP_FORMAT_INT_GENERIC(shortname, ucshortname, ctype, sizeof_bits, is_signed, is_b128) \
 {                                                                \
@@ -15,7 +16,9 @@
     BULP_TRUE, /* is_zeroable */                                 \
     #ctype,                                                      \
     "bulp_"  #shortname,                                         \
-    "BULP_"  #ucshortname                                        \
+    "BULP_"  #ucshortname,                                       \
+    NULL,                                                        \
+    NULL,                                                        \
   },                                                             \
   sizeof_bits / 8,                                               \
   is_signed,                                                     \
@@ -23,6 +26,7 @@
 }
 
 /* --- uint8 implementation --- */
+#define validate_native__uint8 NULL
 static size_t
 get_packed_size__uint8   (BulpFormat *format,
                           void *native_data)
@@ -42,14 +46,13 @@ pack__uint8            (BulpFormat *format,
   return 1;
 }
 
-static size_t
+static void
 pack_to__uint8         (BulpFormat *format,
                         void *native_data,
-                        BulpBuffer *out)
+                        BulpDataBuilder *out)
 {
   (void) format;
-  bulp_buffer_append_byte (out, * (uint8_t *) native_data);
-  return 1;
+  bulp_data_builder_append_byte (out, * (uint8_t *) native_data);
 }
 
 static size_t
@@ -81,6 +84,7 @@ static BulpFormatInt int_format__uint8 = DEFINE_BULP_FORMAT_INT_GENERIC(
 );
 
 /* --- uint16 implementation --- */
+#define validate_native__uint16 NULL
 static size_t
 get_packed_size__uint16  (BulpFormat *format,
                           void *native_data)
@@ -99,13 +103,13 @@ pack__uint16           (BulpFormat *format,
   return bulp_uint16_pack (* (uint16_t *) native_data, packed_data_out);
 }
 
-static size_t
+static void
 pack_to__uint16        (BulpFormat *format,
                         void *native_data,
-                        BulpBuffer *out)
+                        BulpDataBuilder *out)
 {
   (void) format;
-  return bulp_uint16_pack_to (* (uint16_t *) native_data, out);
+  bulp_uint16_pack_to (* (uint16_t *) native_data, out);
 }
 
 static size_t
@@ -137,6 +141,7 @@ static BulpFormatInt int_format__uint16 = DEFINE_BULP_FORMAT_INT_GENERIC(
 );
 
 /* --- uint32 implementation --- */
+#define validate_native__uint32 NULL
 static size_t
 get_packed_size__uint32  (BulpFormat *format,
                           void *native_data)
@@ -156,14 +161,14 @@ pack__uint32           (BulpFormat *format,
   return bulp_uint32_pack (v, packed_data_out);
 }
 
-static size_t
+static void
 pack_to__uint32        (BulpFormat *format,
                         void *native_data,
-                        BulpBuffer *out)
+                        BulpDataBuilder *out)
 {
   (void) format;
   uint32_t v = * (uint32_t *) native_data;
-  return bulp_uint32_pack_to (v, out);
+  bulp_uint32_pack_to (v, out);
 }
 
 static size_t
@@ -195,6 +200,7 @@ static BulpFormatInt int_format__uint32 = DEFINE_BULP_FORMAT_INT_GENERIC(
 );
 
 /* --- uint64 implementation --- */
+#define validate_native__uint64 NULL
 static size_t
 get_packed_size__uint64  (BulpFormat *format,
                           void *native_data)
@@ -226,14 +232,14 @@ pack__uint64           (BulpFormat *format,
   return 8;
 }
 
-static size_t
+static void
 pack_to__uint64        (BulpFormat *format,
                         void *native_data,
-                        BulpBuffer *out)
+                        BulpDataBuilder *out)
 {
   (void) format;
 #if BULP_IS_LITTLE_ENDIAN
-  bulp_buffer_append_small (out, 8, native_data);
+  bulp_data_builder_append_nocopy (out, 8, native_data);
 #else
   uint64_t v = * (uint64_t *) native_data;
   uint8_t tmp[8];
@@ -245,9 +251,8 @@ pack_to__uint64        (BulpFormat *format,
   tmp[5] = v >> 40;
   tmp[6] = v >> 48;
   tmp[7] = v >> 56;
-  bulp_buffer_append_small (out, 8, tmp);
+  bulp_data_builder_append (out, 8, tmp);
 #endif
-  return 4;
 }
 
 static size_t
@@ -297,6 +302,7 @@ static BulpFormatInt int_format__uint64 = DEFINE_BULP_FORMAT_INT_GENERIC(
 );
 
 /* --- int8 implementation --- */
+#define validate_native__int8 NULL
 static size_t
 get_packed_size__int8    (BulpFormat *format,
                           void *native_data)
@@ -316,14 +322,13 @@ pack__int8             (BulpFormat *format,
   return 1;
 }
 
-static size_t
+static void
 pack_to__int8          (BulpFormat *format,
                         void *native_data,
-                        BulpBuffer *out)
+                        BulpDataBuilder *out)
 {
   (void) format;
-  bulp_buffer_append_byte (out, * (uint8_t *) native_data);
-  return 1;
+  bulp_data_builder_append_byte (out, * (uint8_t *) native_data);
 }
 
 static size_t
@@ -361,6 +366,7 @@ static BulpFormatInt int_format__int8 = DEFINE_BULP_FORMAT_INT_GENERIC(
 );
 
 /* --- int16 implementation --- */
+#define validate_native__int16 NULL
 static size_t
 get_packed_size__int16   (BulpFormat *format,
                           void *native_data)
@@ -386,22 +392,21 @@ pack__int16            (BulpFormat *format,
   return 2;
 }
 
-static size_t
+static void
 pack_to__int16         (BulpFormat *format,
                         void *native_data,
-                        BulpBuffer *out)
+                        BulpDataBuilder *out)
 {
   (void) format;
 #if BULP_IS_LITTLE_ENDIAN
-  bulp_buffer_append_small (out, 2, native_data);
+  bulp_data_builder_append_nocopy (out, 2, native_data);
 #else
   uint16_t v = * (uint16_t *) native_data;
   uint8_t tmp[2];
   tmp[0] = v;
   tmp[1] = v >> 8;
-  bulp_buffer_append_small (out, 2, tmp);
+  bulp_data_builder_append (out, 2, tmp);
 #endif
-  return 2;
 }
 
 static size_t
@@ -445,6 +450,7 @@ static BulpFormatInt int_format__int16 = DEFINE_BULP_FORMAT_INT_GENERIC(
 );
 
 /* --- int32 implementation --- */
+#define validate_native__int32 NULL
 static size_t
 get_packed_size__int32   (BulpFormat *format,
                           void *native_data)
@@ -472,14 +478,14 @@ pack__int32            (BulpFormat *format,
   return 4;
 }
 
-static size_t
+static void
 pack_to__int32         (BulpFormat *format,
                         void *native_data,
-                        BulpBuffer *out)
+                        BulpDataBuilder *out)
 {
   (void) format;
 #if BULP_IS_LITTLE_ENDIAN
-  bulp_buffer_append_small (out, 4, native_data);
+  bulp_data_builder_append_nocopy (out, 4, native_data);
 #else
   uint32_t v = * (uint32_t *) native_data;
   uint8_t tmp[4];
@@ -487,9 +493,8 @@ pack_to__int32         (BulpFormat *format,
   tmp[1] = v >> 8;
   tmp[2] = v >> 16;
   tmp[3] = v >> 24;
-  bulp_buffer_append_small (out, 4, tmp);
+  bulp_data_builder_append (out, 4, tmp);
 #endif
-  return 4;
 }
 
 static size_t
@@ -535,6 +540,7 @@ static BulpFormatInt int_format__int32 = DEFINE_BULP_FORMAT_INT_GENERIC(
 );
 
 /* --- int64 implementation --- */
+#define validate_native__int64 NULL
 static size_t
 get_packed_size__int64   (BulpFormat *format,
                           void *native_data)
@@ -566,14 +572,14 @@ pack__int64            (BulpFormat *format,
   return 8;
 }
 
-static size_t
+static void
 pack_to__int64         (BulpFormat *format,
                         void *native_data,
-                        BulpBuffer *out)
+                        BulpDataBuilder *out)
 {
   (void) format;
 #if BULP_IS_LITTLE_ENDIAN
-  bulp_buffer_append_small (out, 8, native_data);
+  bulp_data_builder_append_nocopy (out, 8, native_data);
 #else
   uint64_t v = * (uint64_t *) native_data;
   uint8_t tmp[8];
@@ -585,9 +591,8 @@ pack_to__int64         (BulpFormat *format,
   tmp[5] = v >> 40;
   tmp[6] = v >> 48;
   tmp[7] = v >> 56;
-  bulp_buffer_append_small (out, 8, tmp);
+  bulp_data_builder_append (out, 8, tmp);
 #endif
-  return 8;
 }
 
 static size_t
@@ -637,6 +642,7 @@ static BulpFormatInt int_format__int64 = DEFINE_BULP_FORMAT_INT_GENERIC(
 );
 
 /* --- ushort implementation --- */
+#define validate_native__ushort NULL
 static size_t
 get_packed_size__ushort  (BulpFormat *format,
                           void *native_data)
@@ -654,13 +660,13 @@ pack__ushort           (BulpFormat *format,
   return bulp_ushort_pack (* (uint16_t *) native_data, packed_data_out);
 }
 
-static size_t
+static void
 pack_to__ushort        (BulpFormat *format,
                         void *native_data,
-                        BulpBuffer *out)
+                        BulpDataBuilder *out)
 {
   (void) format;
-  return bulp_ushort_pack_to (* (uint16_t *) native_data, out);
+  bulp_ushort_pack_to (* (uint16_t *) native_data, out);
 }
 
 static size_t
@@ -692,6 +698,7 @@ static BulpFormatInt int_format__ushort = DEFINE_BULP_FORMAT_INT_GENERIC(
 );
 
 /* --- uint implementation --- */
+#define validate_native__uint NULL
 static size_t
 get_packed_size__uint    (BulpFormat *format,
                           void *native_data)
@@ -710,16 +717,15 @@ pack__uint             (BulpFormat *format,
   return bulp_uint_pack (* (uint32_t *) native_data, packed_data_out);
 }
 
-static size_t
+static void
 pack_to__uint          (BulpFormat *format,
                         void *native_data,
-                        BulpBuffer *out)
+                        BulpDataBuilder *out)
 {
   (void) format;
   uint8_t b[5];
   unsigned rv = pack__uint (format, native_data, b);
-  bulp_buffer_append_small (out, rv, native_data);
-  return rv;
+  bulp_data_builder_append (out, rv, b);
 }
 
 static size_t
@@ -751,6 +757,7 @@ static BulpFormatInt int_format__uint   = DEFINE_BULP_FORMAT_INT_GENERIC(
 );
 
 /* --- ulong implementation --- */
+#define validate_native__ulong NULL
 static size_t
 get_packed_size__ulong   (BulpFormat *format,
                           void *native_data)
@@ -776,16 +783,15 @@ pack__ulong            (BulpFormat *format,
   return rv;
 }
 
-static size_t
+static void
 pack_to__ulong         (BulpFormat *format,
                         void *native_data,
-                        BulpBuffer *out)
+                        BulpDataBuilder *out)
 {
   (void) format;
   uint8_t b[11];
   unsigned rv = pack__ulong (format, native_data, b);
-  bulp_buffer_append_small (out, rv, native_data);
-  return rv;
+  bulp_data_builder_append (out, rv, b);
 }
 
 static size_t
@@ -847,6 +853,7 @@ static inline uint16_t zigzag16 (int16_t sv)
   else
     return 1 + (-sv) * 2;
 }
+#define validate_native__short NULL
 static size_t
 get_packed_size__short  (BulpFormat *format,
                           void *native_data)
@@ -885,16 +892,15 @@ pack__short           (BulpFormat *format,
     }
 }
 
-static size_t
+static void
 pack_to__short         (BulpFormat *format,
                         void *native_data,
-                        BulpBuffer *out)
+                        BulpDataBuilder *out)
 {
   (void) format;
   uint8_t b[3];
   unsigned rv = pack__short (format, native_data, b);
-  bulp_buffer_append_small (out, rv, native_data);
-  return rv;
+  bulp_data_builder_append (out, rv, b);
 }
 
 static size_t
@@ -954,6 +960,7 @@ static BulpFormatInt int_format__short = DEFINE_BULP_FORMAT_INT_GENERIC(
 );
 
 /* --- int implementation --- */
+#define validate_native__int NULL
 static size_t
 get_packed_size__int    (BulpFormat *format,
                           void *native_data)
@@ -972,13 +979,13 @@ pack__int             (BulpFormat *format,
   return bulp_int_pack (* (int32_t *) native_data, packed_data_out);
 }
 
-static size_t
+static void
 pack_to__int          (BulpFormat *format,
                         void *native_data,
-                        BulpBuffer *out)
+                        BulpDataBuilder *out)
 {
   (void) format;
-  return bulp_int_pack_to (* (int32_t *) native_data, out);
+  bulp_int_pack_to (* (int32_t *) native_data, out);
 }
 
 static size_t
@@ -1010,6 +1017,7 @@ static BulpFormatInt int_format__int   = DEFINE_BULP_FORMAT_INT_GENERIC(
 );
 
 /* --- long implementation --- */
+#define validate_native__long NULL
 static size_t
 get_packed_size__long   (BulpFormat *format,
                           void *native_data)
@@ -1027,13 +1035,13 @@ pack__long            (BulpFormat *format,
   return bulp_long_pack (* (int64_t *) native_data, packed_data_out);
 }
 
-static size_t
+static void
 pack_to__long         (BulpFormat *format,
                         void *native_data,
-                        BulpBuffer *out)
+                        BulpDataBuilder *out)
 {
   (void) format;
-  return bulp_long_pack_to (* (int64_t *) native_data, out);
+  bulp_long_pack_to (* (int64_t *) native_data, out);
 }
 
 static size_t
@@ -1073,9 +1081,6 @@ dup_int_format (BulpFormatInt *format_int)
   return (BulpFormat *) rv;
 }
 
-
-
-
 #define DEFINE_BULP_FORMAT_FLOAT_GENERIC(shortname, ucshortname, ctype, sizeof_bits) \
 {                                                                \
   {                                                              \
@@ -1089,11 +1094,32 @@ dup_int_format (BulpFormatInt *format_int)
     BULP_TRUE, /* is_zeroable */                                 \
     #ctype,                                                      \
     "bulp_"  #shortname,                                         \
-    "BULP_"  #ucshortname                                        \
+    "BULP_"  #ucshortname,                                       \
+    NULL,       /* optional_of */                                \
+    NULL        /* array_of */                                   \
   },                                                             \
   BULP_FLOAT_TYPE_##ucshortname,                                 \
 }
 
+static bulp_bool
+validate_native__float32 (BulpFormat *format,
+                          void       *native_data,
+                          BulpError **error)
+{
+  (void) format;
+  switch (fpclassify (* (float *) native_data))
+    {
+    case FP_INFINITE:
+      *error = bulp_error_new_infinity_not_allowed ();
+      return BULP_FALSE;
+    case FP_NAN:
+    case FP_SUBNORMAL:
+      *error = bulp_error_new_not_a_number ();
+      return BULP_FALSE;
+    default:
+      return BULP_TRUE;
+    }
+}
 
 static size_t
 get_packed_size__float32 (BulpFormat *format,
@@ -1113,13 +1139,13 @@ pack__float32            (BulpFormat *format,
   return bulp_float32_pack (* (float *) native_data, packed_data_out);
 }
 
-static size_t
+static void
 pack_to__float32         (BulpFormat *format,
                           void *native_data,
-                          BulpBuffer *out)
+                          BulpDataBuilder *out)
 {
   (void) format;
-  return bulp_float32_pack_to (* (float *) native_data, out);
+  bulp_float32_pack_to (* (float *) native_data, out);
 }
 
 static size_t
@@ -1148,6 +1174,27 @@ static BulpFormatFloat float_format__float32 = DEFINE_BULP_FORMAT_FLOAT_GENERIC(
   32
 );
 
+
+static bulp_bool
+validate_native__float64 (BulpFormat *format,
+                          void       *native_data,
+                          BulpError **error)
+{
+  (void) format;
+  switch (fpclassify (* (double *) native_data))
+    {
+    case FP_INFINITE:
+      *error = bulp_error_new_infinity_not_allowed ();
+      return BULP_FALSE;
+    case FP_NAN:
+    case FP_SUBNORMAL:
+      *error = bulp_error_new_not_a_number ();
+      return BULP_FALSE;
+    default:
+      return BULP_TRUE;
+    }
+}
+
 static size_t
 get_packed_size__float64 (BulpFormat *format,
                           void *native_data)
@@ -1166,13 +1213,13 @@ pack__float64            (BulpFormat *format,
   return bulp_float64_pack (* (double *) native_data, packed_data_out);
 }
 
-static size_t
+static void
 pack_to__float64         (BulpFormat *format,
                           void *native_data,
-                          BulpBuffer *out)
+                          BulpDataBuilder *out)
 {
   (void) format;
-  return bulp_float64_pack_to (* (double *) native_data, out);
+  bulp_float64_pack_to (* (double *) native_data, out);
 }
 
 static size_t
@@ -1200,9 +1247,6 @@ static BulpFormatFloat float_format__float64 = DEFINE_BULP_FORMAT_FLOAT_GENERIC(
   double,
   64
 );
-
-
-
 static BulpFormat *
 dup_float_format (BulpFormatFloat *format_float)
 {

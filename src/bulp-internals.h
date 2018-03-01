@@ -1,6 +1,8 @@
 typedef struct BulpNamespaceTreeNode BulpNamespaceTreeNode;
 typedef struct BulpNamespaceToplevel BulpNamespaceToplevel;
 
+#include "../generated/bulp-machdep-config.h"
+
 void _bulp_namespace_toplevel_add_builtins (BulpNamespaceToplevel *ns);
 
 struct BulpNamespaceTreeNode
@@ -48,6 +50,7 @@ struct BulpNamespaceToplevel
 
 #define BULP_FORMAT_VFUNCS_DEFINE(shortname) \
   {                                          \
+    validate_native__##shortname,             \
     get_packed_size__##shortname,            \
     pack__##shortname,                       \
     pack_to__##shortname,                    \

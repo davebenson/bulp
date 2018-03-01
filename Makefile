@@ -7,9 +7,12 @@ obj/bulp-namespace-parser.o \
 obj/bulp-namespace.o \
 obj/bulp-error.o \
 obj/bulp-buffer.o \
+obj/bulp-data-builder.o \
 obj/bulp-mem-pool.o \
 obj/bulp-format-packed.o \
 obj/bulp-format-enum.o \
+obj/bulp-format-struct.o \
+obj/bulp-format-optional.o \
 obj/bulp-format.o \
 obj/bulp-namespace-toplevel-formats.o \
 obj/bulp-inlines.o \

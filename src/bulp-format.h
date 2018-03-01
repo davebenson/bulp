@@ -11,19 +11,21 @@ typedef enum {
   BULP_FORMAT_TYPE_FLOAT,
   BULP_FORMAT_TYPE_STRUCT,
   BULP_FORMAT_TYPE_UNION,
-  BULP_FORMAT_TYPE_MESSAGE,
   BULP_FORMAT_TYPE_OPTIONAL
 } BulpFormatType;
 
 typedef struct {
+  bulp_bool (*validate_native) (BulpFormat *format,
+                                void *native_data,
+                                BulpError **error);                     // optional
   size_t    (*get_packed_size) (BulpFormat *format,
                                 void *native_data);
   size_t    (*pack)            (BulpFormat *format,
                                 void *native_data,
-                                uint8_t *packed_data_out);
-  size_t    (*pack_to)         (BulpFormat *format,
+                                uint8_t *out);
+  void      (*pack_to)         (BulpFormat *format,
                                 void *native_data,
-                                BulpBuffer *out);
+                                BulpDataBuilder *builder);
   size_t    (*unpack)          (BulpFormat *format,
                                 size_t packed_len,
                                 const uint8_t *packed_data,
@@ -50,6 +52,9 @@ typedef struct {
   const char *c_typename;               // mixed case - first letter capital
   const char *c_func_prefix;            // ie all lowercase with underscores
   const char *c_macro_prefix;           // ie all uppercase with underscores
+
+  BulpFormat *optional_of;      // created on demand
+  BulpFormat *array_of;            // created on demand
 } BulpFormatBase;
 
 /* short int long
@@ -201,6 +206,7 @@ BulpFormatUnionCase *bulp_format_union_lookup_by_name  (BulpFormat *format,
                                                         ssize_t     name_len,
                                                         const char *name);
 
+#if 0
 typedef struct {
   unsigned start_version;
   unsigned end_version;
@@ -215,18 +221,23 @@ typedef struct {
 } BulpMemberVersioningInfo;
 
 #define BULP_MEMBER_VERSIONING_INFO_INIT {0,NULL,NULL,BULP_FALSE}
+#endif
 
 typedef struct {
   const char *name;
   BulpFormat *format;
-  BulpMemberVersioningInfo *versioning_info;
+
+  // ignored for non-messages
+  bulp_bool set_value;
+  unsigned value_if_set;
 } BulpStructMember;
 
 typedef struct {
   char *name;
   BulpFormat *format;
-  BulpMemberVersioningInfo *versioning_info;
+  unsigned value;                               // if is message
   unsigned native_offset;
+  void *native_default_value;
 } BulpFormatStructMember;
 #define BULP_STRUCT_MEMBER_IS_EXTANT(member) \
   ((member)->versioning_info == NULL || !(member)->versioning_info->ignored)
@@ -235,13 +246,19 @@ typedef struct BulpFormatStruct {
   BulpFormatBase base;
   size_t n_members;
   BulpFormatStructMember *members;
+  BulpFormatStructMember **members_by_name;
+  bulp_bool is_message;                         // used to denote an extensible struct
 } BulpFormatStruct;
 
 BulpFormatStructMember *
 bulp_format_struct_lookup_by_name (BulpFormat *format,
                                    ssize_t     name_len,
                                    const char *name_start);
+BulpFormatStructMember *
+bulp_format_message_lookup_by_value (BulpFormat*format,
+                                     uint32_t value);
 
+#if 0
 typedef struct {
   char *name;
   bulp_bool set_value;
@@ -261,12 +278,12 @@ typedef struct
   BulpFormatBase base;
   unsigned n_fields;
   BulpFormatMessageField *fields;
+  BulpFormatMessageField **fields_by_name;
 } BulpFormatMessage;
 BulpFormatMessageField *bulp_format_message_lookup_by_name (BulpFormat*format,
                                                       ssize_t    name_len,
                                                       const char *name);
-BulpFormatMessageField *bulp_format_message_lookup_by_value (BulpFormat*format,
-                                                             uint32_t value);
+#endif
 typedef struct {
   BulpFormatBase base;
   BulpFormat *subformat;
@@ -283,7 +300,6 @@ union BulpFormat {
   BulpFormatFloat v_float;
   BulpFormatStruct v_struct;
   BulpFormatUnion v_union;
-  BulpFormatMessage v_message;
   BulpFormatOptional v_optional;
 };
 
@@ -316,11 +332,14 @@ BulpFormat *bulp_format_optional_of      (BulpFormat *subtype);
 BulpFormat *bulp_format_new_enum         (unsigned n_values,
                                           BulpEnumValue *values);
 BulpFormat *bulp_format_new_struct       (unsigned n_members,
-                                          BulpStructMember *members);
+                                          BulpStructMember *members,
+                                          bulp_bool         is_message);
 BulpFormat *bulp_format_new_union        (unsigned n_cases,
                                           BulpUnionCase    *cases);
+#if 0
 BulpFormat *bulp_format_new_message      (unsigned n_fields,
                                           BulpMessageField *fields);
+#endif
 
 BulpFormat *bulp_format_ref              (BulpFormat       *format);
 void        bulp_format_unref            (BulpFormat       *format);

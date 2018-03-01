@@ -142,6 +142,13 @@ bulp_mem_pool_strdup       (BulpMemPool     *pool,
   L = strlen (str) + 1;
   return memcpy (bulp_mem_pool_alloc_unaligned (pool, L), str, L);
 }
+void *
+bulp_mem_pool_memdup       (BulpMemPool     *pool,
+                           size_t len,
+			   const void     *str)
+{
+  return memcpy (bulp_mem_pool_alloc_unaligned (pool, len), str, len);
+}
 char    *bulp_mem_pool_strcut   (BulpMemPool      *pool,
                                 const char      *start,
                                 const char      *past_end)
@@ -273,12 +280,12 @@ void     bulp_mem_pool_fixed_free      (BulpMemPoolFixed     *pool,
 }
 
 /**
- * bulp_mem_pool_fixed_destruct:
+ * bulp_mem_pool_fixed_clear:
  * @pool: the pool to destroy.
  *
  * Free all memory associated with this pool.
  */
-void     bulp_mem_pool_fixed_destruct  (BulpMemPoolFixed     *pool)
+void     bulp_mem_pool_fixed_clear  (BulpMemPoolFixed     *pool)
 {
   while (pool->slab_list)
     {

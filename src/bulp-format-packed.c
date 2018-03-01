@@ -2,9 +2,6 @@
 #include "bulp-internals.h"
 #include <string.h>
 
-#ifndef MAX
-#define MAX(a,b)    (((a) < (b)) ? (b) : (a))
-#endif
 
 unsigned
 bulp_packed_element_get_native   (BulpFormatPackedElement *elt,
@@ -34,6 +31,7 @@ bulp_packed_element_set_native   (BulpFormatPackedElement *elt,
     default: assert(0); 
     }
 }
+#define validate_native__packed NULL
 static size_t
 get_packed_size__packed (BulpFormat *format,
                          void *native_data)
@@ -196,23 +194,23 @@ bulp_format_packed_new (size_t n_elts,
         {
           elements[i].native_word_size = 1;
           elements[i].native_byte_offset = cur_offset++;
-          max_align = MAX (max_align, 1);
+          max_align = BULP_MAX (max_align, 1);
         }
       else if (elts[i].n_bits <= 16)
         {
           elements[i].native_word_size = 2;
-          cur_offset = (cur_offset + BULP_INT16_ALIGNOF - 1) / BULP_INT16_ALIGNOF * BULP_INT16_ALIGNOF;
+          cur_offset = bulp_align (cur_offset, BULP_INT16_ALIGNOF);
           elements[i].native_byte_offset = cur_offset;
           cur_offset += 2;
-          max_align = MAX (max_align, BULP_INT16_ALIGNOF);
+          max_align = BULP_MAX (max_align, BULP_INT16_ALIGNOF);
         }
       else if (elts[i].n_bits <= 32)
         {
           elements[i].native_word_size = 4;
-          cur_offset = (cur_offset + BULP_INT32_ALIGNOF - 1) / BULP_INT32_ALIGNOF * BULP_INT32_ALIGNOF;
+          cur_offset = bulp_align (cur_offset, BULP_INT32_ALIGNOF);
           elements[i].native_byte_offset = cur_offset;
           cur_offset += 4;
-          max_align = MAX (max_align, BULP_INT32_ALIGNOF);
+          max_align = BULP_MAX (max_align, BULP_INT32_ALIGNOF);
         }
       else
         assert(0);

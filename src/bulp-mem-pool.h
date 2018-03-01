@@ -18,19 +18,24 @@ struct _BulpMemPool
 
 BULP_INLINE void     bulp_mem_pool_init     (BulpMemPool     *pool);
 BULP_INLINE void     bulp_mem_pool_init_buf (BulpMemPool     *pool,
-                                                size_t          buffer_size,
-                                                void           *buffer);
+                                             size_t          buffer_size,
+                                             void           *buffer);
 BULP_INLINE void    *bulp_mem_pool_alloc    (BulpMemPool     *pool,
-                                                size_t          size);
-                void    *bulp_mem_pool_alloc0   (BulpMemPool     *pool,
-                                                size_t          size);
+                                             size_t          size);
+            void    *bulp_mem_pool_alloc0   (BulpMemPool     *pool,
+                                             size_t          size);
 BULP_INLINE void    *bulp_mem_pool_alloc_unaligned(BulpMemPool *pool,
-                                                size_t          size);
-                char    *bulp_mem_pool_strdup   (BulpMemPool      *pool,
-                                                const char      *str);
-                char    *bulp_mem_pool_strcut   (BulpMemPool      *pool,
-                                                const char      *start,
-                                                const char      *past_end);
+                                             size_t          size);
+            char    *bulp_mem_pool_strdup   (BulpMemPool      *pool,
+                                             const char      *str);
+
+//NOTE: returns unaligned data!
+            void    *bulp_mem_pool_memdup   (BulpMemPool     *pool,
+                                             size_t           len,
+                                             const void      *data);
+            char    *bulp_mem_pool_strcut   (BulpMemPool     *pool,
+                                             const char      *start,
+                                             const char      *past_end);
 BULP_INLINE void     bulp_mem_pool_clear    (BulpMemPool     *pool);
 
 /* --- Allocate and free Memory Pool --- */

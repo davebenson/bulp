@@ -21,6 +21,8 @@
     ctype, /* c_typename */ \
     func_prefix, /* c_func_prefix */ \
     macro_prefix, /* c_macro_prefix */ \
+    NULL,       /* optional_of */ \
+    NULL        /* array_of */ \
   }
 BulpFormatInt bulp_format_ints_global[14] = {
 

@@ -6,6 +6,8 @@ typedef enum {
   BULP_ERROR_JSON_BAD_NUMBER,
   BULP_ERROR_JSON_BAD_STRING,
   BULP_ERROR_PARSE,
+  BULP_ERROR_INFINITY,
+  BULP_ERROR_NOT_A_NUMBER,
   BULP_ERROR_FILE_NOT_FOUND,
   BULP_ERROR_FILE_OPEN_FAILURE,
   BULP_ERROR_FILE_STAT_FAILURE,
@@ -62,6 +64,8 @@ BulpError *bulp_error_new_too_short (const char *format,
                                      ...) BULP_PRINTF_LIKE(1,2);
 BulpError *bulp_error_new_bad_data (const char *format,
                                     ...) BULP_PRINTF_LIKE(1,2);
+BulpError *bulp_error_new_infinity_not_allowed (void);
+BulpError *bulp_error_new_not_a_number (void);
 
 
 void       bulp_error_append_message (BulpError *error,

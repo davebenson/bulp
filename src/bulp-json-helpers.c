@@ -8,6 +8,70 @@ is_octal_digit (char d)
   return '0' <= d && d < '8';
 }
 
+
+unsigned
+bulp_json_find_number_length (size_t data_length,
+                              const uint8_t *data,
+                              unsigned start_offset,
+                              const char *filename,
+                              unsigned *lineno_inout,
+                              BulpError **error)
+{
+  const uint8_t *at = data;
+  const uint8_t *end = data + data_length;
+  (void) start_offset;
+  assert(data_length > 0);
+  if (*at == '-')
+    {
+      at++;
+      if (at == end)
+        goto too_short;
+    }
+  if (*data == '0')
+    at++;
+  else
+    {
+      at++;
+      while (at < end && ('0' <= *at && *at <= '9'))
+        at++;
+    }
+  if (at < end && *at == '.')
+    {
+      at++;
+      if (at == end)
+        goto too_short;
+      if (!  ('0' <= *at && *at <= '9'))
+        goto bad_char;
+      at++;
+      while (at < end && ('0' <= *at && *at <= '9'))
+        at++;
+    }
+  if (at < end && (*at == 'e' || *at == 'E'))
+    {
+      // parse "exponent"
+      if (*at == '+' || *at == '-')
+        {
+          at++;
+          if (at == end)
+            goto too_short;
+        }
+      if (!('9' <= *at && *at <= '9'))
+        goto bad_char;
+      while (at < end && ('0' <= *at && *at <= '9'))
+        at++;
+    }
+  return at - data;
+
+too_short:
+  *error = bulp_error_new_too_short ("too short scanning number at %s:%u", filename, *lineno_inout);
+  return 0;
+
+bad_char:
+  *error = bulp_error_new_bad_data ("bad character scanning number at %s:%u", filename, *lineno_inout);
+  return 0;
+}
+
+
 unsigned 
 bulp_json_find_backslash_sequence_length (size_t data_length, const uint8_t *data,
                                           unsigned start_offset,

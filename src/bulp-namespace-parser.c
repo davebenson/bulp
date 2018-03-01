@@ -1066,6 +1066,7 @@ parse_json_value (const char *filename,
       }
       return 1;
 
+#if 0
     case BULP_FORMAT_TYPE_STRUCT:
       {
         uint8_t *values_found = alloca (format->v_struct.n_members);
@@ -1159,11 +1160,7 @@ parse_json_value (const char *filename,
           if (!values_found[i])
             {
               BulpFormatStructMember *m = format->v_struct.members + i;
-              if (m->versioning_info != NULL && m->versioning_info->default_value != NULL)
-                {
-                  copy_value (m->format, (char*) value_out + m->native_offset, m->versioning_info->default_value);
-                }
-              else if (m->format->base.is_zeroable)
+              if (m->format->base.is_zeroable)
                 {
                   *error = bulp_error_new_parse (filename, tokens[0].line_no, "missing required member %s", m->name);
                   return 0;
@@ -1171,6 +1168,7 @@ parse_json_value (const char *filename,
             }
         return at;
       }
+#endif
 
     case BULP_FORMAT_TYPE_UNION:
       {
@@ -1297,7 +1295,7 @@ parse_json_value (const char *filename,
         return at;
       }
 
-    case BULP_FORMAT_TYPE_MESSAGE:
+    case BULP_FORMAT_TYPE_STRUCT:
       {
         uint8_t *values_found = alloca (format->v_struct.n_members);
         memset (values_found, 0, format->v_struct.n_members);
@@ -1346,9 +1344,9 @@ parse_json_value (const char *filename,
               }
             at++;
 
-            BulpFormatMessageField *mf;
-            mf = bulp_format_message_lookup_by_name (format, name_len, name_start);
-            if (mf == NULL)
+            BulpFormatStructMember *sm;
+            sm = bulp_format_struct_lookup_by_name (format, name_len, name_start);
+            if (sm == NULL)
               {
                 unsigned nskip = skip_json_value (filename, n_tokens - at, tokens + at, error);
                 if (nskip == 0)
@@ -1360,14 +1358,14 @@ parse_json_value (const char *filename,
             // value (format depends on name)
             unsigned vtok_used = parse_json_value (filename, file_data,
                                          n_tokens - at, tokens + at,
-                                         mf->field_format,
-                                         (char*)value_out + mf->native_offset,
+                                         sm->format,
+                                         (char*)value_out + sm->native_offset,
                                          error);
             if (vtok_used == 0)
               {
                 bulp_error_append_message (*error, " (in %s::%s)",
                      format->base.canonical_name,
-                     mf->name);
+                     sm->name);
                 return 0;
               }
             at += vtok_used;
@@ -1391,11 +1389,16 @@ parse_json_value (const char *filename,
           if (!values_found[i])
             {
               BulpFormatStructMember *m = format->v_struct.members + i;
-              if (m->versioning_info != NULL && m->versioning_info->default_value != NULL)
+              void *mem_value = (char*)value_out + m->native_offset;
+              if (m->native_default_value != NULL)
                 {
-                  copy_value (m->format, (char*) value_out + m->native_offset, m->versioning_info->default_value);
+                  memcpy (mem_value, m->native_default_value, m->format->base.c_sizeof);
                 }
               else if (m->format->base.is_zeroable)
+                {
+                  memset (mem_value, 0, m->format->base.c_sizeof);
+                }
+              else
                 {
                   *error = bulp_error_new_parse (filename, tokens[0].line_no, "missing required member %s", m->name);
                   return 0;
@@ -1475,12 +1478,6 @@ destruct_parsed_json_value (BulpFormat *format, void *native_value)
         break;
       }
 
-    case BULP_FORMAT_TYPE_MESSAGE:
-      for (unsigned i = 0; i < format->v_message.n_fields; i++)
-        destruct_parsed_json_value (format->v_message.fields[i].field_format,
-                        (char *) native_value + format->v_message.fields[i].native_offset);
-      break;
-
     case BULP_FORMAT_TYPE_OPTIONAL:
       {
         void *v = * (void **) native_value;
@@ -1496,6 +1493,7 @@ destruct_parsed_json_value (BulpFormat *format, void *native_value)
     }
 }
 
+#if 0
 static unsigned
 parse_member_versioning_info (const char *filename,
                               unsigned cur_version,
@@ -1664,6 +1662,7 @@ error_cleanup:
     }
   return 0;
 }
+#endif
 
 static char *
 cut_token (const uint8_t *file_data, const Token *token)
@@ -1711,6 +1710,7 @@ parse_struct_member (BulpImports *imports,
   /* The semicolon is optional if there's a versioning stanza */
   bulp_bool require_semicolon = BULP_TRUE;
 
+  #if 0
   BulpMemberVersioningInfo versioning = BULP_MEMBER_VERSIONING_INFO_INIT;
   if (tokens[tokens_used].type == TOKEN_TYPE_LBRACE)
     {
@@ -1730,6 +1730,7 @@ parse_struct_member (BulpImports *imports,
       tokens_used += ntok;
       require_semicolon = BULP_FALSE;
     }
+#endif
 
   if (tokens_used < n_tokens && tokens[tokens_used].type == TOKEN_TYPE_SEMICOLON)
     {
@@ -1756,14 +1757,16 @@ parse_struct_member (BulpImports *imports,
 }
 
 static unsigned
-parse_struct_format (BulpImports *imports,
-                     const char *filename,
-                     const uint8_t *file_data,
-                     unsigned n_tokens, Token *tokens,
-                     BulpError **error)
+parse_struct_or_message_format (BulpImports *imports,
+                                const char *filename,
+                                const uint8_t *file_data,
+                                unsigned n_tokens, Token *tokens,
+                                bulp_bool is_message,
+                                BulpError **error)
 {
   unsigned token_at = 0;
-  assert(tokens[0].type == TOKEN_TYPE_STRUCT);
+  assert((!is_message && tokens[0].type == TOKEN_TYPE_STRUCT)
+      || ( is_message && tokens[0].type == TOKEN_TYPE_MESSAGE));
   unsigned n_members = 0;
   if (token_at + 1 >= n_tokens || tokens[token_at+1].type == TOKEN_TYPE_BAREWORD)
     {
@@ -1804,7 +1807,7 @@ parse_struct_format (BulpImports *imports,
     }
   token_at++;
 
-  BulpFormat *fmt = bulp_format_new_struct (n_members, members);
+  BulpFormat *fmt = bulp_format_new_struct (n_members, members, is_message);
   for (unsigned k = 0; k < n_members; k++)
     free ((char*) members[k].name);
   bulp_namespace_add_format (imports->this_ns, name_tok->byte_length,
@@ -2104,6 +2107,7 @@ error_cleanup:
   return 0;
 }
 
+#if 0
 /// messages
 static unsigned
 parse_message_field    (BulpImports *imports,
@@ -2256,7 +2260,7 @@ error_cleanup:
   free (fields);
   return 0;
 }
-
+#endif
 
 static bulp_bool
 parse_tokens (BulpImports *imports,
@@ -2307,11 +2311,15 @@ parse_tokens (BulpImports *imports,
             token_at++;
             break;
           case TOKEN_TYPE_STRUCT:
+          case TOKEN_TYPE_MESSAGE:
             {
-              unsigned n_subtokens = parse_struct_format (imports, filename,
+              bulp_bool is_message = tokens[token_at].type == TOKEN_TYPE_MESSAGE;
+              unsigned n_subtokens = parse_struct_or_message_format
+                                                         (imports, filename,
                                                           file_data,
                                                           n_tokens - token_at,
                                                           tokens + token_at,
+                                                          is_message,
                                                           error);
               if (n_subtokens == 0)
                 return BULP_FALSE;
@@ -2335,17 +2343,6 @@ parse_tokens (BulpImports *imports,
           case TOKEN_TYPE_UNION:
             {
               unsigned n_subtokens = parse_union_format (imports, filename, file_data,
-                               n_tokens - token_at, tokens + token_at,
-                               error);
-              if (n_subtokens == 0)
-                return BULP_FALSE;
-              token_at += n_subtokens;
-            }
-            break;
-
-          case TOKEN_TYPE_MESSAGE:
-            {
-              unsigned n_subtokens = parse_message_format (imports, filename, file_data,
                                n_tokens - token_at, tokens + token_at,
                                error);
               if (n_subtokens == 0)

@@ -79,6 +79,20 @@ bulp_format_enum_lookup_by_value (BulpFormat *format,
 }
 
 #if 1 || BULP_SIZEOF_TINY_ENUM == 1
+static bulp_bool
+validate_native__enum1 (BulpFormat *format,
+                       void *native_data,
+                       BulpError **error)
+{
+  uint8_t enum_value = * (const uint8_t *) native_data;
+  if (bulp_format_enum_lookup_by_value (format, enum_value) == NULL)
+    {
+      *error = bulp_error_new_bad_data ("invalid value %u for enum %s",
+                                        enum_value, format->base.canonical_name);
+      return BULP_FALSE;
+    }
+  return BULP_TRUE;
+}
 static size_t
 get_packed_size__enum1 (BulpFormat *format,
                        void *native_data)
@@ -94,13 +108,13 @@ pack__enum1           (BulpFormat *format,
   (void) format;
   return bulp_uint32_pack (* (uint8_t *) native_data, packed_data_out);
 }
-static size_t
+static void
 pack_to__enum1        (BulpFormat *format,
                        void *native_data,
-                       BulpBuffer *out)
+                       BulpDataBuilder *out)
 {
   (void) format;
-  return bulp_uint32_pack_to (* (uint8_t *) native_data, out);
+  bulp_uint32_pack_to (* (uint8_t *) native_data, out);
 }
 static size_t
 unpack__enum1         (BulpFormat *format,
@@ -133,6 +147,20 @@ destruct_format__enum1 (BulpFormat  *format)
 BulpFormatVFuncs vfuncs__enum1 = BULP_FORMAT_VFUNCS_DEFINE(enum1);
 #endif
 #if 1 || BULP_SIZEOF_TINY_ENUM == 2 || BULP_SIZEOF_SHORT_ENUM == 2
+static bulp_bool
+validate_native__enum2 (BulpFormat *format,
+                       void *native_data,
+                       BulpError **error)
+{
+  uint16_t enum_value = * (const uint16_t *) native_data;
+  if (bulp_format_enum_lookup_by_value (format, enum_value) == NULL)
+    {
+      *error = bulp_error_new_bad_data ("invalid value %u for enum %s",
+                                        enum_value, format->base.canonical_name);
+      return BULP_FALSE;
+    }
+  return BULP_TRUE;
+}
 static size_t
 get_packed_size__enum2 (BulpFormat *format,
                        void *native_data)
@@ -148,13 +176,13 @@ pack__enum2           (BulpFormat *format,
   (void) format;
   return bulp_uint32_pack (* (uint16_t *) native_data, packed_data_out);
 }
-static size_t
+static void
 pack_to__enum2        (BulpFormat *format,
                        void *native_data,
-                       BulpBuffer *out)
+                       BulpDataBuilder *out)
 {
   (void) format;
-  return bulp_uint32_pack_to (* (uint16_t *) native_data, out);
+  bulp_uint32_pack_to (* (uint16_t *) native_data, out);
 }
 static size_t
 unpack__enum2         (BulpFormat *format,
@@ -188,6 +216,20 @@ BulpFormatVFuncs vfuncs__enum2 = BULP_FORMAT_VFUNCS_DEFINE(enum2);
 #endif
 
 #if 1 || BULP_SIZEOF_TINY_ENUM == 4 || BULP_SIZEOF_SHORT_ENUM == 4 || BULP_SIZEOF_INT_ENUM == 4
+static bulp_bool
+validate_native__enum4 (BulpFormat *format,
+                       void *native_data,
+                       BulpError **error)
+{
+  uint32_t enum_value = * (const uint32_t *) native_data;
+  if (bulp_format_enum_lookup_by_value (format, enum_value) == NULL)
+    {
+      *error = bulp_error_new_bad_data ("invalid value %u for enum %s",
+                                        enum_value, format->base.canonical_name);
+      return BULP_FALSE;
+    }
+  return BULP_TRUE;
+}
 static size_t
 get_packed_size__enum4 (BulpFormat *format,
                        void *native_data)
@@ -203,13 +245,13 @@ pack__enum4           (BulpFormat *format,
   (void) format;
   return bulp_uint32_pack (* (uint32_t *) native_data, packed_data_out);
 }
-static size_t
+static void
 pack_to__enum4        (BulpFormat *format,
                        void *native_data,
-                       BulpBuffer *out)
+                       BulpDataBuilder *out)
 {
   (void) format;
-  return bulp_uint32_pack_to (* (uint32_t *) native_data, out);
+  bulp_uint32_pack_to (* (uint32_t *) native_data, out);
 }
 static size_t
 unpack__enum4         (BulpFormat *format,
@@ -265,6 +307,7 @@ bulp_format_new_enum         (unsigned n_values,
                               BulpEnumValue *values)
 {
   BulpFormatEnum *rv = malloc (sizeof (BulpFormatEnum));
+  memset (rv, 0, sizeof (BulpFormatEnum));
 
   //  compute values
   rv->values = malloc (sizeof (BulpFormatEnumValue) * n_values);
@@ -305,8 +348,6 @@ bulp_format_new_enum         (unsigned n_values,
   // initialize rv->base
   rv->base.type = BULP_FORMAT_TYPE_ENUM;
   rv->base.ref_count = 1;
-  rv->base.canonical_ns = NULL;
-  rv->base.canonical_name = NULL;
   /* native (ie equivalent to generated C code) representation */
   uint32_t maxv = rv->values[rv->n_values - 1].value;
   rv->base.c_sizeof = maxv < 256 ? BULP_SIZEOF_TINY_ENUM
@@ -339,9 +380,6 @@ bulp_format_new_enum         (unsigned n_values,
     }
   rv->base.copy_with_memcpy = BULP_TRUE;
   rv->base.is_zeroable = rv->values[0].value == 0;
-  rv->base.c_typename = NULL;
-  rv->base.c_func_prefix = NULL;
-  rv->base.c_macro_prefix = NULL;
 
   return (BulpFormat *) rv;
 }
