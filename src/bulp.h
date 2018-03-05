@@ -8,6 +8,7 @@ typedef struct BulpError BulpError;
 #include <assert.h>
 #include <unistd.h>                     // for ssize_t
 #include <stdarg.h>
+#include <string.h>                     // used by some inline functions
 
 #include "bulp-defs.h"
 #include "bulp-object.h"
@@ -28,13 +29,13 @@ typedef struct BulpError BulpError;
 
 // mostly for machine-generated code, but occasionally useful directly for
 // unpacking/packing fundamental formats.
+#include "bulp-utf.h"
 #include "bulp-builtins-int.h"
 #include "bulp-builtins-float.h"
 #include "bulp-builtins-string.h"
 #include "bulp-builtins-binary-data.h"
 
 // internals
-#include "bulp-utf.h"
 #include "bulp-json-helpers.h"
 
 #endif

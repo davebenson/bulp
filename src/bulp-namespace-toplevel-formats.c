@@ -1111,7 +1111,7 @@ get_packed_size__float64 (BulpFormat *format,
 {
   (void) format;
   (void) native_data;
-  return 4;
+  return 8;
 }
 
 static size_t
@@ -1344,14 +1344,7 @@ validate_native__ascii   (BulpFormat *format,
                           BulpError **error)
 {
   (void) format;
-  BulpString *s = native_data;
-  for (unsigned i = 0; i < s->length; i++)
-    if (s->str[i] & 0x80)
-      {
-        *error = bulp_error_new_nonascii ();
-        return BULP_FALSE;
-      }
-  return BULP_TRUE;
+  return bulp_ascii_validate (* (BulpString *) native_data, error);
 }
 
 static size_t
@@ -1523,6 +1516,125 @@ dup_string_format (BulpFormatString *format_string)
   return (BulpFormat *) rv;
 }
 
+// =====================================================================
+//                          ENUM FORMATS
+// =====================================================================
+
+static bulp_bool 
+validate_native__bool (BulpFormat *format,
+                       void *native_data,
+                       BulpError **error)
+{
+  (void) format;
+  if (* (bulp_bool *) native_data > 1) 
+    {
+      *error = bulp_error_new_bad_case_value (* (bulp_bool *) native_data, "bool");
+      return BULP_FALSE;
+    }
+  return BULP_TRUE;
+}
+
+static size_t
+get_packed_size__bool (BulpFormat *format,
+                       void *native_data)
+{
+  (void) format;
+  (void) native_data;
+  return 1;
+}
+
+static size_t
+pack__bool            (BulpFormat *format,
+                       void *native_data,
+                       uint8_t *out)
+{
+  (void) format;
+  *out = * (bulp_bool *) native_data ? 1 : 0;
+  return 1;
+}
+
+static void
+pack_to__bool         (BulpFormat *format,
+                       void *native_data,
+                       BulpDataBuilder *builder)
+{
+  (void) format;
+  bulp_data_builder_append_byte (builder, * (bulp_bool *) native_data ? 1 : 0);
+}
+
+size_t
+unpack__bool          (BulpFormat *format,
+                       size_t packed_len,
+                       const uint8_t *packed_data,
+                       void *native_data_out,
+                       BulpMemPool *pool,
+                       BulpError **error)
+{
+  (void) format;
+  (void) pool;
+  if (packed_len < 1)
+    {
+      *error = bulp_error_new_too_short ("unpacking bool");
+      return BULP_FALSE;
+    }
+  if (packed_data[0] > 1)
+    {
+      *error = bulp_error_new_bad_case_value (packed_data[0], "bool");
+      return BULP_FALSE;
+    }
+  * (bulp_bool *) native_data_out = packed_data[0];
+  return 1;
+}
+
+static void
+destruct_format__bool (BulpFormat  *format)
+{
+  (void) format;
+}
+
+#define DEFINE_BULP_FORMAT_ENUM_GENERIC(shortname, ucshortname, ctype)   \
+{                                                                        \
+  {                                                                      \
+    BULP_FORMAT_TYPE_ENUM,                                               \
+    1,                    /* ref-count */                                \
+    BULP_FORMAT_VFUNCS_DEFINE(shortname),                                \
+    NULL, NULL,                   /* canonical name/ns */                \
+    BULP_SIZEOF_TINY_ENUM,                                               \
+    BULP_ALIGNOF_TINY_ENUM,                                              \
+    BULP_TRUE, /* copy_with_memcpy */                                    \
+    BULP_TRUE, /* is_zeroable */                                         \
+    "bulp_" #shortname,                                                  \
+    #ctype,                                                              \
+    "BULP_"  #ucshortname,                                               \
+    NULL,       /* optional_of */                                        \
+    NULL        /* array_of */                                           \
+  },                                                                     \
+  sizeof(enum_values__##shortname) / sizeof(enum_values__##shortname[0]),\
+  enum_values__##shortname,                                              \
+  enum_values_by_name__##shortname,                                      \
+}
+
+
+static BulpFormatEnumValue enum_values__bool[2] = {
+  { "false", 0 },
+  { "true", 1 }
+};
+static BulpFormatEnumValue *enum_values_by_name__bool[2] = {
+  enum_values__bool + 0,
+  enum_values__bool + 1,
+};
+static BulpFormatEnum enum_format__bool =
+DEFINE_BULP_FORMAT_ENUM_GENERIC(bool, BOOL, bulp_bool);
+
+static BulpFormat *
+dup_enum_format (BulpFormatEnum *format_enum)
+{
+  BulpFormatEnum *rv = malloc (sizeof (BulpFormatEnum));
+  memcpy (rv, format_enum, sizeof (BulpFormatEnum));
+  return (BulpFormat *) rv;
+}
+
+
 void
 _bulp_namespace_toplevel_add_builtins (BulpNamespaceToplevel *ns)
 {
@@ -1578,4 +1690,15 @@ _bulp_namespace_toplevel_add_builtins (BulpNamespaceToplevel *ns)
   ADD_STRING_TYPE_TO_NS(ascii);
   ADD_STRING_TYPE_TO_NS(ascii0);
 #undef ADD_STRING_TYPE_TO_NS
+
+
+#define ADD_ENUM_TYPE_TO_NS(shortname)                                  \
+  do{                                                                   \
+    BulpFormat *tmp = dup_enum_format(&enum_format__##shortname);       \
+    bulp_namespace_add_format (&ns->base, -1, #shortname, tmp, BULP_TRUE);\
+    ns->format_##shortname = tmp;                                       \
+    bulp_format_unref (tmp);                                            \
+  }while(0)
+  ADD_ENUM_TYPE_TO_NS(bool);
+#undef ADD_ENUM_TYPE_TO_NS
 }

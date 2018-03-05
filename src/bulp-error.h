@@ -24,10 +24,6 @@ typedef enum {
   BULP_ERROR_NONASCII,
 } BulpErrorCode;
 
-typedef struct BulpErrorClass BulpErrorClass;
-struct BulpErrorClass {
-  BulpClass base_class;
-};
 
 struct BulpError {
   BulpErrorCode code;
@@ -38,6 +34,9 @@ struct BulpError {
   unsigned ref_count;
   void (*destroy)(BulpError*);
 };
+
+BulpError *bulp_error_ref (BulpError *);
+void       bulp_error_unref (BulpError *);
 
 
 BulpError * bulp_error_new_file_not_found (const char *filename);

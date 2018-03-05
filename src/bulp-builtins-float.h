@@ -114,7 +114,7 @@ bulp_float64_unpack           (size_t packed_len,
 {
   if (packed_len < 8)
     {
-      *error = bulp_error_new_too_short ("packed float64 needs 4 bytes, got %u", (unsigned) packed_len);
+      *error = bulp_error_new_too_short ("packed float64 needs 8 bytes, got %u", (unsigned) packed_len);
       return 0;
     }
 #if BULP_IS_LITTLE_ENDIAN

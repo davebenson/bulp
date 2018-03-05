@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <errno.h>
 
+
 BulpError *bulp_error_new_file_not_found (const char *filename)
 {
   BulpError *rv = bulp_error_new_protected (BULP_ERROR_FILE_NOT_FOUND,

@@ -46,6 +46,7 @@ struct BulpNamespaceToplevel
   BulpFormat * format_ascii0;
   BulpFormat * format_string0;
   BulpFormat * format_binary_data;
+  BulpFormat * format_bool;
 };
 
 #define BULP_FORMAT_VFUNCS_DEFINE(shortname) \
