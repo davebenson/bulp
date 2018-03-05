@@ -11,7 +11,8 @@ typedef enum {
   BULP_FORMAT_TYPE_FLOAT,
   BULP_FORMAT_TYPE_STRUCT,
   BULP_FORMAT_TYPE_UNION,
-  BULP_FORMAT_TYPE_OPTIONAL
+  BULP_FORMAT_TYPE_OPTIONAL,
+  BULP_FORMAT_TYPE_ARRAY
 } BulpFormatType;
 
 typedef struct {
@@ -156,6 +157,7 @@ BulpFormatPackedElement *bulp_format_packed_lookup_element(BulpFormat *format,
                                                            const char *name);
 
 typedef struct {
+  ssize_t name_len;
   char *name;
   bulp_bool set_value;
   unsigned value_if_set;
@@ -181,14 +183,14 @@ BulpFormatEnumValue *bulp_format_enum_lookup_by_value(BulpFormat*format,
 
 typedef struct {
   const char *name;
-  BulpFormat *case_format;
-  bulp_bool has_value;
-  uint32_t value;
+  BulpFormat *format;
+  bulp_bool set_value;
+  uint32_t value_if_set;
 } BulpUnionCase;
 
 typedef struct {
   const char *name;
-  BulpFormat *case_format;
+  BulpFormat *format;
   uint32_t value;
 } BulpFormatUnionCase;
 
@@ -196,6 +198,7 @@ typedef struct BulpFormatUnion {
   BulpFormatBase base;
   size_t n_cases;
   BulpFormatUnionCase *cases;
+  BulpFormatUnionCase **cases_by_name;
   unsigned native_type_size;
   unsigned native_info_offset;
 } BulpFormatUnion;
@@ -293,6 +296,7 @@ union BulpFormat {
   BulpFormatType type;
   BulpFormatBase base;
   BulpFormatBinaryData v_binary_data;
+  BulpFormatArray v_array;
   BulpFormatPacked v_packed;
   BulpFormatString v_string;
   BulpFormatEnum v_enum;
@@ -411,6 +415,9 @@ bulp_bool      bulp_namespace_query            (BulpNamespace *ns,
                                                 const char    *dotted_name,
                                                 BulpNamespaceEntry *out);
 BulpNamespace *bulp_namespace_force_subnamespace(BulpNamespace *ns,
+                                                const char    *dotted_name);
+BulpNamespace *bulp_namespace_force_subnamespace_1(BulpNamespace *ns,
+                                                ssize_t        name_len,
                                                 const char    *name);
 
 typedef bulp_bool (*BulpNamespaceForeachFunc) (BulpNamespace *ns,

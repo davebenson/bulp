@@ -52,6 +52,13 @@ typedef int bulp_bool;
 #define BULP_RBRACKET_STR   "]"
 #define BULP_RPAREN_STR     ")"
 
+typedef struct BulpArray BulpArray;
+struct BulpArray
+{
+  unsigned length;                 // in elements
+  void *data;
+};
+
 typedef struct BulpString BulpString;
 struct BulpString
 {

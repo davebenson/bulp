@@ -19,16 +19,16 @@ typedef enum {
   BULP_ERROR_UTF8_SHORT,
   BULP_ERROR_TOO_SHORT,
   BULP_ERROR_BAD_DATA,
+  BULP_ERROR_BAD_CASE_VALUE,
+  BULP_ERROR_MISSING_TERMINATOR,
+  BULP_ERROR_NONASCII,
 } BulpErrorCode;
-
-typedef struct BulpError BulpError;
 
 typedef struct BulpErrorClass BulpErrorClass;
 struct BulpErrorClass {
   BulpClass base_class;
 };
 
-typedef struct BulpError BulpError;
 struct BulpError {
   BulpErrorCode code;
   char *message;
@@ -64,6 +64,7 @@ BulpError *bulp_error_new_too_short (const char *format,
                                      ...) BULP_PRINTF_LIKE(1,2);
 BulpError *bulp_error_new_bad_data (const char *format,
                                     ...) BULP_PRINTF_LIKE(1,2);
+BulpError *bulp_error_new_bad_case_value (unsigned value, const char *name);
 BulpError *bulp_error_new_infinity_not_allowed (void);
 BulpError *bulp_error_new_not_a_number (void);
 
@@ -74,6 +75,9 @@ void       bulp_error_append_message (BulpError *error,
 
 BulpError *bulp_error_new_bad_utf8 (void);
 BulpError *bulp_error_new_short_utf8 (void);
+BulpError * bulp_error_new_missing_terminator (const char *format, ...) BULP_PRINTF_LIKE(1,2);
+BulpError * bulp_error_new_nonascii (void);
+BulpError * bulp_error_new_unexpected_nul (void);
 #define BULP_ERROR_SET_C_LOCATION(e) do{    \
     (e)->c_filename = __FILE__;             \
     (e)->c_lineno = __LINE__;               \

@@ -94,16 +94,15 @@ pack__packed            (BulpFormat *format,
   return at - packed_data_out;
 }
 
-static size_t
+static void
 pack_to__packed         (BulpFormat *format,
                          void *native_data,
-                         BulpBuffer *out)
+                         BulpDataBuilder *out)
 {
   size_t size = (format->v_packed.total_bit_size + 7) / 8;
   void *packed_data = alloca (size);
   pack__packed (format, native_data, packed_data);
-  bulp_buffer_append_small (out, size, packed_data);
-  return size;
+  bulp_data_builder_append (out, size, packed_data);
 }
 
 static size_t
@@ -187,7 +186,15 @@ bulp_format_packed_new (size_t n_elts,
   size_t max_align = 0;
   for (unsigned i = 0; i < n_elts; i++)
     {
-      elements[i].name = strdup (elts[i].name);
+      if (elts[i].name_len > 0)
+        {
+          char *n = malloc (elts[i].name_len + 1);
+          memcpy (n, elts[i].name, elts[i].name_len);
+          n[elts[i].name_len] = 0;
+          elements[i].name = n;
+        }
+      else
+        elements[i].name = strdup (elts[i].name);
       elements[i].n_bits = elts[i].n_bits;
       total_bit_size += elements[i].n_bits;
       if (elts[i].n_bits <= 8)

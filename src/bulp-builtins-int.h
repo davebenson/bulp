@@ -348,42 +348,152 @@ bulp_uint64_unpack           (size_t packed_len,
 }
 
 /* === Fixed Length, Signed Integers (int8, int16, int32, int64) === */
-BULP_INLINE size_t bulp_int8_get_packed_size    (int8_t v);
+BULP_INLINE size_t bulp_int8_get_packed_size    (int8_t v)
+{
+  (void) v;
+  return 1;
+}
 BULP_INLINE size_t bulp_int8_pack               (int8_t v,
-                                                 uint8_t *out);
+                                                 uint8_t *out)
+{
+  *out = (uint8_t) v;
+  return 1;
+}
+
 BULP_INLINE size_t bulp_int8_pack_to            (int8_t v,
-                                                 BulpDataBuilder *out);
+                                                 BulpDataBuilder *out)
+{
+  bulp_data_builder_append_byte (out, (uint8_t) v);
+  return 1;
+}
+
 BULP_INLINE size_t bulp_int8_unpack             (size_t packed_len,
                                                  const uint8_t *packed_data,
                                                  int8_t *out,
-                                                 BulpError**error);
-BULP_INLINE size_t bulp_int16_get_packed_size   (int16_t v);
+                                                 BulpError**error)
+{
+  if (packed_len < 1)
+    {
+      *error = bulp_error_new_too_short ("unpacking int8");
+      return 0;
+    }
+  *out = *packed_data;
+  return 1;
+}
+BULP_INLINE size_t bulp_int16_get_packed_size   (int16_t v)
+{
+  (void) v;
+  return 2;
+}
 BULP_INLINE size_t bulp_int16_pack              (int16_t v,
-                                                 uint8_t *out);
+                                                 uint8_t *out)
+{
+  return bulp_uint16_pack ((uint16_t) v, out);
+}
+
 BULP_INLINE size_t bulp_int16_pack_to           (int16_t v,
-                                                 BulpDataBuilder *out);
+                                                 BulpDataBuilder *out)
+{
+  return bulp_uint16_pack_to ((uint16_t) v, out);
+}
 BULP_INLINE size_t bulp_int16_unpack            (size_t packed_len,
                                                  const uint8_t *packed_data,
                                                  int16_t *out,
-                                                 BulpError**error);
-BULP_INLINE size_t bulp_int32_get_packed_size   (int32_t v);
+                                                 BulpError**error)
+{
+  if (packed_len < 2)
+    {
+      *error = bulp_error_new_too_short ("unpacking int16");
+      return 0;
+    }
+#if BULP_IS_LITTLE_ENDIAN
+  memcpy (out, packed_data, 2);
+#else
+  uint16_t v = ((uint16_t) packed_data[0])
+             | ((uint16_t) packed_data[1] << 8);
+  * out = (int16_t) v;
+#endif
+  return 2;
+}
+
+BULP_INLINE size_t bulp_int32_get_packed_size   (int32_t v)
+{
+  (void) v;
+  return 4;
+}
+
 BULP_INLINE size_t bulp_int32_pack              (int32_t v,
-                                                 uint8_t *out);
+                                                 uint8_t *out)
+{
+  return bulp_uint32_pack ((uint32_t) v, out);
+}
 BULP_INLINE size_t bulp_int32_pack_to           (int32_t v,
-                                                 BulpDataBuilder *out);
+                                                 BulpDataBuilder *out)
+{
+  return bulp_uint32_pack_to ((uint32_t) v, out);
+}
 BULP_INLINE size_t bulp_int32_unpack            (size_t packed_len,
                                                  const uint8_t *packed_data,
                                                  int32_t *out,
-                                                 BulpError**error);
-BULP_INLINE size_t bulp_int64_get_packed_size   (int64_t v);
+                                                 BulpError**error)
+{
+  if (packed_len < 4)
+    {
+      *error = bulp_error_new_too_short ("unpacking int32");
+      return 0;
+    }
+#if BULP_IS_LITTLE_ENDIAN
+  memcpy (out, packed_data, 4);
+#else
+  uint32_t v = ((uint32_t) packed_data[0])
+             | ((uint32_t) packed_data[1] << 8)
+             | ((uint32_t) packed_data[2] << 16)
+             | ((uint32_t) packed_data[3] << 24);
+  * out = (int32_t) v;
+#endif
+  return 4;
+}
+BULP_INLINE size_t bulp_int64_get_packed_size   (int64_t v)
+{
+  (void) v;
+  return 8;
+}
 BULP_INLINE size_t bulp_int64_pack              (int64_t v,
-                                                 uint8_t *out);
+                                                 uint8_t *out)
+{
+  return bulp_uint64_pack ((uint64_t) v, out);
+}
 BULP_INLINE size_t bulp_int64_pack_to           (int64_t v,
-                                                 BulpDataBuilder *out);
+                                                 BulpDataBuilder *out)
+{
+  return bulp_uint64_pack_to ((uint64_t) v, out);
+}
 BULP_INLINE size_t bulp_int64_unpack            (size_t packed_len,
                                                  const uint8_t *packed_data,
                                                  int64_t *out,
-                                                 BulpError**error);
+                                                 BulpError**error)
+{
+  if (packed_len < 8)
+    {
+      *error = bulp_error_new_too_short ("unpacking int64");
+      return 0;
+    }
+#if BULP_IS_LITTLE_ENDIAN
+  memcpy (out, packed_data, 8);
+#else
+  uint64_t v = ((uint64_t)packed_data[0] << 0)
+             | ((uint64_t)packed_data[1] << 8)
+             | ((uint64_t)packed_data[2] << 16)
+             | ((uint64_t)packed_data[3] << 24)
+             | ((uint64_t)packed_data[4] << 32)
+             | ((uint64_t)packed_data[5] << 40)
+             | ((uint64_t)packed_data[6] << 48)
+             | ((uint64_t)packed_data[7] << 56);
+  *out = (int64_t) v;
+#endif
+  return 8;
+}
+
 BULP_INLINE size_t bulp_ushort_get_packed_size  (uint16_t v)
 {
   return (v < (1<<7)) ? 1 : (v < (1<<14)) ? 2 : 3;
@@ -582,8 +692,7 @@ bulp_ulong_get_packed_size  (uint64_t v)
   return (v < (1ULL<<7)) ? 1 : (v < (1ULL<<14)) ? 2 :
          (v < (1ULL<<21)) ? 3 : (v < (1ULL<<28)) ? 4 :
          (v < (1ULL<<35)) ? 5 : (v < (1ULL<<42)) ? 6 :
-         (v < (1ULL<<49)) ? 7 : (v < (1ULL<<56)) ? 8 :
-         (v < (1ULL<<63)) ? 9 : 10;
+         (v < (1ULL<<49)) ? 7 : (v < (1ULL<<56)) ? 8 : 9;
 }
 BULP_INLINE size_t
 bulp_ulong_pack             (uint64_t v,
@@ -592,6 +701,11 @@ bulp_ulong_pack             (uint64_t v,
   unsigned rv = 0;
   while (v >= 128)
     {
+      if (rv == 8)
+        {
+          out[rv++] = v;
+          return rv;
+        }
       out[rv++] = 0x80 | v;
       v >>= 7;
     }
@@ -617,23 +731,23 @@ bulp_ulong_unpack           (size_t packed_len,
   unsigned n = 0;
   unsigned shift = 0;
   uint64_t rv = 0;
-  do
+  for (;;)
     {
-      if (BULP_UNLIKELY (n > 10))
-        {
-          *error = bulp_error_new_bad_data ("unpacking ulong");
-          return 0;
-        }
-      if (BULP_UNLIKELY (n < packed_len))
+      if (BULP_UNLIKELY (n >= packed_len))
         {
           *error = bulp_error_new_too_short ("unpacking ulong");
           return 0;
         }
+      if (n == 8)
+        {
+          rv += ((uint64_t)(packed_data[n++]) << shift);
+          break;
+        }
       rv += ((uint64_t)(packed_data[n] & 0x7f) << shift);
       shift += 7;
+      if ((packed_data[n++] & 0x80) == 0)
+        break;
     }
-  while ((packed_data[n++] & 0x80) != 0);
-
   *out = rv;
   return n;
 }

@@ -562,6 +562,9 @@ config_align (void)
 enum TinyEnum { TINY_A, TINY_B };
 enum ShortEnum { SHORT_A, SHORT_B, SHORT_C = 0x100 };
 enum IntEnum { INT_A, INT_B, INT_C = 0x10000 };
+struct AlignTinyEnumTest { char c; enum TinyEnum v; };
+struct AlignShortEnumTest { char c; enum ShortEnum v; };
+struct AlignIntEnumTest { char c; enum IntEnum v; };
 
 static void
 config_enum_sizes (void)
@@ -569,6 +572,9 @@ config_enum_sizes (void)
   printf ("#define BULP_SIZEOF_TINY_ENUM %u\n", (unsigned) sizeof (enum TinyEnum));
   printf ("#define BULP_SIZEOF_SHORT_ENUM %u\n", (unsigned) sizeof (enum ShortEnum));
   printf ("#define BULP_SIZEOF_INT_ENUM %u\n", (unsigned) sizeof (enum IntEnum));
+  printf ("#define BULP_ALIGNOF_TINY_ENUM %u\n", (unsigned) offsetof(struct AlignTinyEnumTest, v));
+  printf ("#define BULP_ALIGNOF_SHORT_ENUM %u\n", (unsigned) offsetof(struct AlignShortEnumTest, v));
+  printf ("#define BULP_ALIGNOF_INT_ENUM %u\n", (unsigned) offsetof(struct AlignIntEnumTest, v));
 }
 
 int main()

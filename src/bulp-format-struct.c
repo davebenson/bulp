@@ -393,12 +393,13 @@ bulp_format_new_struct          (unsigned n_members,
   size_t max_align = 1;
   for (unsigned i = 0; i < n_members; i++)
     {
+      BulpFormat *member_format = members[i].format;
       unsigned v = (members[i].set_value) ?  members[i].value_if_set : next_value;
       rv->members[i].value = v;
       rv->members[i].name = strdup (members[i].name);
+      rv->members[i].format = bulp_format_ref (member_format);
 
       next_value = v + 1;
-      BulpFormat *member_format = members[i].format;
       if (!member_format->base.copy_with_memcpy)
         copy_with_memcpy = BULP_FALSE;
       if (!member_format->base.is_zeroable)

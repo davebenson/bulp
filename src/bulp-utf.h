@@ -10,6 +10,15 @@ typedef enum {
 } BulpUTF8CharValidationResult;
 
 
+bulp_bool
+bulp_utf8_validate      (size_t max_bytes,
+                         const uint8_t *bytes,
+                         BulpError **error);
+bulp_bool
+bulp_utf8_validate_nonnul(size_t max_bytes,
+                         const uint8_t *bytes,
+                         BulpError **error);
+
 BULP_INLINE BulpUTF8CharValidationResult
 bulp_utf8_char_validate (size_t max_bytes,
                          const uint8_t *bytes,

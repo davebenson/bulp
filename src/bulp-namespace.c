@@ -3,6 +3,7 @@
 #include "dsk-rbtree-macros.h"
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #define CMP_TREE_NODES(a,b,rv) rv = strcmp ((a)->name, (b)->name)
 
@@ -45,7 +46,7 @@ _bulp_namespace_new_nontoplevel (void)
   rv->version = 0;
   rv->by_name = NULL;
   rv->is_toplevel = BULP_FALSE;
-  return NULL;
+  return rv;
 }
 
 /* Returns false if the name is already in use */
@@ -89,6 +90,8 @@ bulp_bool      bulp_namespace_add_format       (BulpNamespace *ns,
                                                 BulpFormat    *format,
                                                 bulp_bool      is_canonical_ns)
 {
+  assert(ns != NULL);
+
   BulpNamespaceTreeNode *tree_node = malloc (sizeof (BulpNamespaceTreeNode));
   tree_node->entry.type = BULP_NAMESPACE_ENTRY_FORMAT;
   tree_node->entry.info.v_format = format;
@@ -191,22 +194,28 @@ bulp_bool      bulp_namespace_query            (BulpNamespace *ns,
 
 
 BulpNamespace *
-bulp_namespace_force_1_len  (BulpNamespace *ns,
-                             size_t         name_len,
-                             const char    *name)
+bulp_namespace_force_subnamespace_1(BulpNamespace *ns,
+                                    ssize_t        name_len,
+                                    const char    *name)
 {
   BulpNamespaceTreeNode tn;
+  if (name_len < 0)
+    name_len = strlen (name);
   assert(memchr (name, '.', name_len) == NULL);
+  assert(ns != NULL);
   char *n = alloca (name_len + 1);
   memcpy (n, name, name_len);
   n[name_len] = 0;
   tn.name = n;
   BulpNamespaceTreeNode *conflict;
   DSK_RBTREE_INSERT (GET_TREE (ns), &tn, conflict);
-  if (conflict == NULL)
+  if (conflict != NULL)
     {
       if (conflict->entry.type != BULP_NAMESPACE_ENTRY_SUBNAMESPACE)
-        return NULL;
+        {
+          fprintf(stderr, "non-namespace child %s found\n", n);
+          return NULL;
+        }
       return conflict->entry.info.v_namespace;
     }
   else
@@ -220,13 +229,6 @@ bulp_namespace_force_1_len  (BulpNamespace *ns,
       DSK_RBTREE_REPLACE_NODE (GET_TREE (ns), (&tn), new_node);
       return rv;
     }
-}
-
-BulpNamespace *
-bulp_namespace_force_1  (BulpNamespace *ns,
-                         const char    *name)
-{
-  return bulp_namespace_force_1_len (ns, strlen (name), name);
 }
 
 BulpNamespace *
@@ -247,7 +249,7 @@ bulp_namespace_force_subnamespace  (BulpNamespace *ns,
       else
         {
           // final component: just call query_1_len
-          ns_at = bulp_namespace_force_1_len (ns, end-at, at);
+          ns_at = bulp_namespace_force_subnamespace_1 (ns, end-at, at);
           if (!ns_at)
             return NULL;
           if (*end == 0)

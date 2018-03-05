@@ -1,6 +1,7 @@
 #include "bulp.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 /* --- import stanzas --- */
 typedef struct BulpImportEntry BulpImportEntry;
@@ -48,6 +49,13 @@ bulp_imports_lookup (BulpImports *imports, unsigned n_names, char **names)
   // Parse base format (which is always a bareword).
   if (n_names == 1)
     {
+      if (imports->this_ns != NULL
+       && bulp_namespace_query_1 (imports->this_ns, names[0], &ns_entry)
+       && ns_entry.type == BULP_NAMESPACE_ENTRY_FORMAT)
+        return ns_entry.info.v_format;
+      if (bulp_namespace_query_1 (imports->global_ns, names[0], &ns_entry)
+       && ns_entry.type == BULP_NAMESPACE_ENTRY_FORMAT)
+        return ns_entry.info.v_format;
       // search namespaces in order
       for (unsigned i = 0; i < imports->n_entries; i++)
         if (imports->entries[i].as == NULL
@@ -128,6 +136,7 @@ packed Z {
 
 typedef enum {
   TOKEN_TYPE_NAMESPACE,
+  TOKEN_TYPE_ENUM,
   TOKEN_TYPE_STRUCT,
   TOKEN_TYPE_UNION,
   TOKEN_TYPE_PACKED,
@@ -173,6 +182,7 @@ static const char *token_type_to_string (TokenType type)
   {
   WRITE_CASE(NAMESPACE);
   WRITE_CASE(STRUCT);
+  WRITE_CASE(ENUM);
   WRITE_CASE(UNION);
   WRITE_CASE(PACKED);
   WRITE_CASE(MESSAGE);
@@ -181,6 +191,8 @@ static const char *token_type_to_string (TokenType type)
   WRITE_CASE(VOID);
   WRITE_CASE(BAREWORD);
   WRITE_CASE(DOT);
+  WRITE_CASE(DOTDOTDOT);
+  WRITE_CASE(COMMA);
   WRITE_CASE(COLON);
   WRITE_CASE(SEMICOLON);
   WRITE_CASE(LBRACE);
@@ -289,6 +301,7 @@ tokenize (const char    *filename,
           break;
         case '\n':
           //line_offsets[n_lines++] = offset + 1;
+          *lineno_inout += 1;
           offset += 1;
           break;
         case '.':
@@ -298,6 +311,8 @@ tokenize (const char    *filename,
             APPEND_TMP_TO_TOKENS_AND_ADVANCE_OFFSET(DOT, 1);
           break;
         case ':': APPEND_TMP_TO_TOKENS_AND_ADVANCE_OFFSET(COLON, 1); break;
+        case ';': APPEND_TMP_TO_TOKENS_AND_ADVANCE_OFFSET(SEMICOLON, 1); break;
+        case ',': APPEND_TMP_TO_TOKENS_AND_ADVANCE_OFFSET(COMMA, 1); break;
         case '{': APPEND_TMP_TO_TOKENS_AND_ADVANCE_OFFSET(LBRACE, 1); break;
         case '}': APPEND_TMP_TO_TOKENS_AND_ADVANCE_OFFSET(RBRACE, 1); break;
         case '[': APPEND_TMP_TO_TOKENS_AND_ADVANCE_OFFSET(LBRACKET, 1); break;
@@ -345,6 +360,7 @@ tokenize (const char    *filename,
             switch (tmp.byte_length) {
               case 4:
                 if (memcmp (data + offset, "void", 4) == 0) tmp.type = TOKEN_TYPE_VOID;
+                if (memcmp (data + offset, "enum", 4) == 0) tmp.type = TOKEN_TYPE_ENUM;
                 break;
               case 5:
                 if (memcmp (data + offset, "union", 5) == 0) tmp.type = TOKEN_TYPE_UNION;
@@ -465,6 +481,7 @@ parse_format (BulpImports *imports,
       *error = bulp_error_new_unknown_format (filename, tokens[0].line_no, str_heap);
       return 0;
     }
+  tokens_used = n_dotted_name_tokens;
   // handle [] or ? suffixes
   while (tokens_used < n_tokens)
     {
@@ -478,7 +495,7 @@ parse_format (BulpImports *imports,
                                                   BULP_RBRACKET_CHAR);
                 return 0;
               }
-            else
+            else if (tokens[tokens_used+1].type != TOKEN_TYPE_RBRACKET)
               {
                 *error = bulp_error_new_parse (filename, tokens[tokens_used+1].line_no,
                                                   "expected '%c' got %s",
@@ -487,6 +504,7 @@ parse_format (BulpImports *imports,
                 return 0;
               }
             cur_format = bulp_format_array_of (cur_format);
+            assert(cur_format->type == BULP_FORMAT_TYPE_ARRAY);
             tokens_used += 2;
             break;
 
@@ -513,6 +531,7 @@ parse_format (BulpImports *imports,
         }
     }
 done_scanning_suffixes:
+  assert(cur_format != NULL);
   *format_out = cur_format;
   return tokens_used;
 }
@@ -606,10 +625,10 @@ copy_value_post_memcpy (BulpFormat *format,
         uint32_t case_value = get_uint_with_byte_size (dst, format->v_union.native_type_size);
         c = bulp_format_union_lookup_by_value (format, case_value);
         assert (c != NULL);
-        if (c->case_format != NULL && !c->case_format->base.copy_with_memcpy)
+        if (c->format != NULL && !c->format->base.copy_with_memcpy)
           {
             void *union_info = (char *)dst + format->v_union.native_info_offset;
-            copy_value_post_memcpy (c->case_format, union_info);
+            copy_value_post_memcpy (c->format, union_info);
           }
         break;
       }
@@ -1219,7 +1238,7 @@ parse_json_value (const char *filename,
           }
         if (tokens[at].type != TOKEN_TYPE_COLON)
           {
-            if (c->case_format == NULL)
+            if (c->format == NULL)
               {
                 // { "name": null }
                 at++;
@@ -1252,12 +1271,12 @@ parse_json_value (const char *filename,
             at++;               // skip colon
           }
 
-        if (c->case_format != NULL)
+        if (c->format != NULL)
           {
             // value (format depends on name)
             unsigned vtok_used = parse_json_value (filename, file_data,
                                          n_tokens - at, tokens + at,
-                                         c->case_format,
+                                         c->format,
                                          (char*)value_out + format->v_union.native_info_offset,
                                          error);
             if (vtok_used == 0)
@@ -1472,8 +1491,8 @@ destruct_parsed_json_value (BulpFormat *format, void *native_value)
       {
         uint32_t uv = get_uint_with_byte_size (native_value, format->v_union.native_type_size);
         BulpFormatUnionCase *uc = bulp_format_union_lookup_by_value (format, uv);
-        if (uc != NULL && uc->case_format != NULL && !uc->case_format->base.copy_with_memcpy)
-          destruct_parsed_json_value (uc->case_format,
+        if (uc != NULL && uc->format != NULL && !uc->format->base.copy_with_memcpy)
+          destruct_parsed_json_value (uc->format,
                  (char *) native_value + format->v_union.native_info_offset);
         break;
       }
@@ -1491,6 +1510,125 @@ destruct_parsed_json_value (BulpFormat *format, void *native_value)
 
     default: break;
     }
+}
+
+static unsigned
+parse_enum_format (BulpNamespace *ns,
+                   const char    *filename,
+                   const uint8_t *file_data,
+                   unsigned       n_tokens,
+                   Token         *tokens,
+                   BulpError    **error)
+{
+  assert(tokens[0].type == TOKEN_TYPE_ENUM);
+  if (n_tokens == 1)
+    {
+      *error = bulp_error_new_premature_eof (filename, "expected name after 'enum', got eof");
+      return 0;
+    }
+  if (!token_type_is_bareword (tokens[1].type))
+    {
+      *error = bulp_error_new_parse (filename, tokens[1].line_no,
+                                     "expected bareword after 'enum', got %s",
+                                     token_type_to_string (tokens[1].type));
+      return 0;
+    }
+  const char *name_start = (char*) file_data + tokens[1].byte_offset;
+  unsigned name_len = tokens[1].byte_length;
+  if (n_tokens == 2)
+    {
+      *error = bulp_error_new_premature_eof (filename, "expected enum name, got eof");
+      return 0;
+    }
+  if (tokens[2].type != TOKEN_TYPE_LBRACE)
+    {
+      *error = bulp_error_new_parse (filename, tokens[2].line_no,
+                                     "expected '%c' after enum name, got %s",
+                                     BULP_LBRACE_CHAR, token_type_to_string (tokens[1].type));
+      return 0;
+    }
+  unsigned values_alloced = 16;
+  BulpEnumValue *values = malloc (sizeof (BulpEnumValue) * values_alloced);
+  unsigned n_values = 0;
+  unsigned at = 3;
+  while (at < n_tokens && tokens[at].type != TOKEN_TYPE_RBRACE)
+    {
+      BulpEnumValue v;
+      v.name = (char*) file_data + tokens[at].byte_offset;
+      v.name_len = tokens[at].byte_length;
+      if (token_type_is_bareword (tokens[at].type))
+        {
+          at++;
+        }
+      else if (tokens[at].type == TOKEN_TYPE_STRING)
+        {
+          v.name++;
+          v.name_len -= 2;
+          at++;
+        }
+      else
+        {
+          *error = bulp_error_new_parse (filename, tokens[at].line_no,
+                                         "expected bareword or string for enum value name, got %s",
+                                         token_type_to_string (tokens[at].type));
+          return 0;
+        }
+
+      if (at == n_tokens)
+        {
+          *error = bulp_error_new_premature_eof (filename, "after enum value name");
+          return 0;
+        }
+
+      if (tokens[at].type == TOKEN_TYPE_EQ)
+        {
+          at++;
+          if (at == n_tokens)
+            {
+              *error = bulp_error_new_premature_eof (filename, "expected value after enum '='");
+              return 0;
+            }
+          if (tokens[at].type != TOKEN_TYPE_NUMBER)
+            {
+              *error = bulp_error_new_parse (filename, tokens[at].line_no,
+                                             "expected number after enum '=', got %s",
+                                             token_type_to_string (tokens[at].type));
+              return 0;
+            }
+          if (!is_uint (tokens[at].byte_length, file_data + tokens[at].byte_offset, &v.value_if_set))
+            {
+              *error = bulp_error_new_parse (filename, tokens[at+2].line_no,
+                                "expected unsigned integer for enum value");
+              return 0;
+            }
+          v.set_value = BULP_TRUE;
+        }
+      else
+        {
+          v.set_value = BULP_FALSE;
+        }
+      if (n_values == values_alloced)
+        {
+        }
+      values[n_values++] = v;
+
+      if (at < n_tokens && tokens[at].type == TOKEN_TYPE_COMMA)
+        at++;
+    }
+  if (at >= n_tokens)
+    {
+      *error = bulp_error_new_premature_eof(filename, "premature eof, expected %c after enum values", BULP_RBRACE_CHAR);
+      free (values);
+      return 0;
+    }
+
+  // Create enum format and add it to namespace
+  BulpFormat *format = bulp_format_new_enum (n_values, values);
+  free (values);
+  bulp_namespace_add_format (ns, name_len, name_start, format, BULP_TRUE);
+
+  at++;
+  return at;
 }
 
 #if 0
@@ -1691,6 +1829,7 @@ parse_struct_member (BulpImports *imports,
       *error = bulp_error_new_premature_eof (filename, "premature eof in structure member");
       return 0;
     }
+  member_out->format = format;
   unsigned name_token_index = fmt_tokens_used;
   Token *name_tok = tokens + fmt_tokens_used;
   if (name_tok->type != TOKEN_TYPE_BAREWORD)
@@ -1706,6 +1845,37 @@ parse_struct_member (BulpImports *imports,
       *error = bulp_error_new_premature_eof (filename, "premature eof after structure member");
       return 0;
     }
+  if (tokens[tokens_used].type == TOKEN_TYPE_EQ)
+    {
+      if (tokens_used + 1 == n_tokens)
+        {
+          *error = bulp_error_new_premature_eof (filename, "premature eof after structure member '='");
+          return 0;
+        }
+      if (tokens[tokens_used+1].type != TOKEN_TYPE_NUMBER)
+        {
+          *error = bulp_error_new_parse (filename, tokens[tokens_used+1].line_no,
+                                         "expected number after structure member '=', got %s",
+                                         token_type_to_string (tokens[tokens_used + 1].type));
+          return 0;
+        }
+      uint32_t value;
+      if (!is_uint (tokens[tokens_used + 1].byte_length,
+                    file_data + tokens[tokens_used + 1].byte_offset,
+                    &value))
+        {
+          *error = bulp_error_new_parse (filename, tokens[tokens_used+1].line_no,
+                                         "expected integer for structure member value");
+          return 0;
+        }
+      member_out->set_value = BULP_TRUE;
+      member_out->value_if_set = value;
+    }
+  else
+    {
+      member_out->set_value = BULP_FALSE;
+    }
+
 
   /* The semicolon is optional if there's a versioning stanza */
   bulp_bool require_semicolon = BULP_TRUE;
@@ -1768,16 +1938,17 @@ parse_struct_or_message_format (BulpImports *imports,
   assert((!is_message && tokens[0].type == TOKEN_TYPE_STRUCT)
       || ( is_message && tokens[0].type == TOKEN_TYPE_MESSAGE));
   unsigned n_members = 0;
-  if (token_at + 1 >= n_tokens || tokens[token_at+1].type == TOKEN_TYPE_BAREWORD)
+  if (token_at + 1 >= n_tokens
+   || tokens[token_at+1].type != TOKEN_TYPE_BAREWORD)
     {
       *error = bulp_error_new_parse (filename, tokens[token_at].line_no, "expected structure name");
-      goto error_cleanup;
+      return 0;
     }
   Token *name_tok = tokens + token_at + 1;
-  if (token_at + 2 >= n_tokens || tokens[token_at+2].type == TOKEN_TYPE_LBRACE)
+  if (token_at + 2 >= n_tokens || tokens[token_at+2].type != TOKEN_TYPE_LBRACE)
     {
       *error = bulp_error_new_parse (filename, tokens[token_at+1].line_no, "expected '%c'", BULP_LBRACE_CHAR);
-      goto error_cleanup;
+      return 0;
     }
   unsigned members_alloced = 4;
   BulpStructMember *members = malloc(sizeof(BulpStructMember) * members_alloced);
@@ -1792,13 +1963,16 @@ parse_struct_or_message_format (BulpImports *imports,
         }
       unsigned mn = parse_struct_member(imports, filename, file_data, n_tokens - token_at, tokens + token_at, &member, error);
       if (mn == 0)
-        goto error_cleanup;
+        {
+          goto error_cleanup;
+        }
       if (n_members == members_alloced)
         {
           members_alloced *= 2;
           members = realloc (members, sizeof(BulpStructMember) * members_alloced);
         }
       members[n_members++] = member;
+      token_at += mn;
     }
   if (token_at == n_tokens)
     {
@@ -1847,14 +2021,14 @@ parse_packed_format (BulpNamespace *ns,
                                      token_type_to_string (tokens[1].type));
       return 0;
     }
-  if (n_tokens == 2)
+  if (n_tokens == 2 || tokens[2].type != TOKEN_TYPE_LBRACE)
     {
-      *error = bulp_error_new_premature_eof (filename,
-                                             "expected %c after format name",
-                                             BULP_LBRACE_CHAR);
+      *error = bulp_error_new_parse (filename, tokens[2].line_no,
+                                     "expected %c after format name",
+                                     BULP_LBRACE_CHAR);
       return 0;
     }
-  unsigned at = 2;
+  unsigned at = 3;
   unsigned n_elts = 0;
   unsigned elts_alloced = 4;
   BulpPackedElement *packed_elts = malloc (sizeof (BulpPackedElement) * elts_alloced);
@@ -1942,6 +2116,9 @@ parse_packed_format (BulpNamespace *ns,
           packed_elts = realloc (packed_elts, sizeof (BulpPackedElement) * elts_alloced);
         }
       packed_elts[n_elts++] = packed_elt;
+
+      if (at < n_tokens && tokens[at].type == TOKEN_TYPE_SEMICOLON)
+        at++;
     }
   if (at >= n_tokens)
     {
@@ -1971,16 +2148,25 @@ parse_union_case    (BulpImports *imports,
                      BulpError **error)
 {
   BulpFormat *format;
-  unsigned fmt_tokens_used = parse_format (imports, filename, file_data, n_tokens, tokens, &format, error);
-  if (fmt_tokens_used == 0)
-    return 0;
+  unsigned fmt_tokens_used;
+  if (tokens[0].type == TOKEN_TYPE_VOID)
+    {
+      format = NULL;
+      fmt_tokens_used = 1;
+    }
+  else
+    {
+      fmt_tokens_used = parse_format (imports, filename, file_data, n_tokens, tokens, &format, error);
+      if (fmt_tokens_used == 0)
+        return 0;
+    }
   if (fmt_tokens_used == n_tokens)
     {
-      *error = bulp_error_new_premature_eof (filename, "premature eof in structure member");
+      *error = bulp_error_new_premature_eof (filename, "premature eof in union case");
       return 0;
     }
   Token *name_tok = tokens + fmt_tokens_used;
-  if (name_tok->type != TOKEN_TYPE_BAREWORD)
+  if (!token_type_is_bareword (name_tok->type))
     {
       *error = bulp_error_new_parse (filename, tokens[fmt_tokens_used].line_no,
                                      "structure name expected, got %s",
@@ -1990,7 +2176,7 @@ parse_union_case    (BulpImports *imports,
   unsigned tokens_used = fmt_tokens_used + 1;
   if (tokens_used == n_tokens)
     {
-      *error = bulp_error_new_premature_eof (filename, "premature eof after structure member");
+      *error = bulp_error_new_premature_eof (filename, "premature eof after union case");
       return 0;
     }
 
@@ -2034,10 +2220,10 @@ parse_union_case    (BulpImports *imports,
     }
   tokens_used++;
 
-  case_out->case_format = format;
+  case_out->format = format;
   case_out->name = cut_token (file_data, name_tok);
-  case_out->has_value = has_value;
-  case_out->value = value;
+  case_out->set_value = has_value;
+  case_out->value_if_set = value;
   return tokens_used;
 }
 static unsigned
@@ -2050,16 +2236,16 @@ parse_union_format  (BulpImports *imports,
   unsigned token_at = 0;
   assert(tokens[0].type == TOKEN_TYPE_UNION);
   unsigned n_cases = 0;
-  if (token_at + 1 >= n_tokens || tokens[token_at+1].type == TOKEN_TYPE_BAREWORD)
+  if (token_at + 1 >= n_tokens || !token_type_is_bareword (tokens[token_at+1].type))
     {
-      *error = bulp_error_new_parse (filename, tokens[token_at].line_no, "expected structure name");
-      goto error_cleanup;
+      *error = bulp_error_new_parse (filename, tokens[token_at].line_no, "expected union name");
+      return 0;
     }
   Token *name_tok = tokens + token_at + 1;
-  if (token_at + 2 >= n_tokens || tokens[token_at+2].type == TOKEN_TYPE_LBRACE)
+  if (token_at + 2 >= n_tokens || tokens[token_at+2].type != TOKEN_TYPE_LBRACE)
     {
       *error = bulp_error_new_parse (filename, tokens[token_at+1].line_no, "expected '%c'", BULP_LBRACE_CHAR);
-      goto error_cleanup;
+      return 0;
     }
   unsigned cases_alloced = 4;
   BulpUnionCase *cases = malloc(sizeof(BulpUnionCase) * cases_alloced);
@@ -2081,6 +2267,7 @@ parse_union_format  (BulpImports *imports,
           cases = realloc (cases, sizeof(BulpUnionCase) * cases_alloced);
         }
       cases[n_cases++] = c;
+      token_at += mn;
     }
   if (token_at == n_tokens)
     {
@@ -2270,6 +2457,7 @@ parse_tokens (BulpImports *imports,
               Token      *tokens,
               BulpError **error)
 {
+  assert(imports != NULL);
   if (n_tokens == 0)
     {
       // or add use premature-eof or a "empty" error
@@ -2289,13 +2477,24 @@ parse_tokens (BulpImports *imports,
                               "expected namespace name");
       return BULP_FALSE;
     }
-  unsigned ns_n_tokens = parse_dotted_name_from_tokens (filename, n_tokens - 1, tokens + 1, error);
+  unsigned ns_n_tokens = parse_dotted_name_from_tokens (filename, n_tokens + token_at, tokens + token_at, error);
   if (ns_n_tokens == 0)
     {
       return BULP_FALSE;
     }
-  token_at += ns_n_tokens;
 
+  // create "this_ns"
+  BulpNamespace *ns = imports->global_ns;
+  assert(ns != NULL);
+  for (unsigned i = 0; i < ns_n_tokens; i += 2)
+    {
+      ns = bulp_namespace_force_subnamespace_1 (ns,
+                 tokens[token_at + i].byte_length,
+                 (char*) file_data + tokens[token_at + i].byte_offset);
+      assert(ns != NULL);
+    }
+  imports->this_ns = ns;
+  token_at += ns_n_tokens;
   if (tokens[token_at].type != TOKEN_TYPE_SEMICOLON)
     {
       *error = bulp_error_new_parse (filename, tokens[token_at].line_no, "expected ';'");
@@ -2309,6 +2508,18 @@ parse_tokens (BulpImports *imports,
         {
           case TOKEN_TYPE_SEMICOLON:
             token_at++;
+            break;
+          case TOKEN_TYPE_ENUM:
+            {
+              unsigned n_subtokens = parse_enum_format (imports->this_ns,
+                                                        filename, file_data,
+                                                        n_tokens - token_at,
+                                                        tokens + token_at,
+                                                        error);
+              if (n_subtokens == 0)
+                return BULP_FALSE;
+              token_at += n_subtokens;
+            }
             break;
           case TOKEN_TYPE_STRUCT:
           case TOKEN_TYPE_MESSAGE:
@@ -2353,7 +2564,7 @@ parse_tokens (BulpImports *imports,
 
           default:
             *error = bulp_error_new_parse (filename, tokens[token_at].line_no,
-                   "expected 'struct', 'object', 'packed', or 'union', got %s",
+                   "expected 'struct', 'message', 'packed', 'enum', or 'union', got %s",
                    token_type_to_string(tokens[token_at].type));
             return BULP_FALSE;
         }

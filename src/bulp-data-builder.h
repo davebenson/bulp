@@ -26,10 +26,15 @@ void bulp_data_builder_init_buf (BulpDataBuilder *builder,
 void bulp_data_builder_clear    (BulpDataBuilder *builder);
 
 #define BULP_DATA_BUILDER_DECLARE_ON_STACK(name, str_heap_size, n_pieces) \
-  char name##__str_heap[str_heap_alloced]; \
+  char name##__str_heap[str_heap_size]; \
   struct BulpDataBuilderPiece name##__pieces[n_pieces]; \
   BulpDataBuilder name; \
   bulp_data_builder_init_buf (&name, str_heap_size, name##__str_heap, n_pieces, name##__pieces);
+#define BULP_DATA_BUILDER_RESET_ON_STACK(name) \
+  do { \
+  bulp_data_builder_clear (&name); \
+  bulp_data_builder_init_buf (&name, sizeof(name##__str_heap), name##__str_heap, sizeof (name##__pieces)/sizeof(struct BulpDataBuilderPiece), name##__pieces); \
+  }while(0)
   
 
 void bulp_data_builder_append_nocopy (BulpDataBuilder *builder,

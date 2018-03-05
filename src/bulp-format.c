@@ -5,9 +5,9 @@
 BulpFormat *
 bulp_format_ref  (BulpFormat       *format)
 {
-  assert(format->base.ref_count == FORMAT_REF_COUNT_INVALID);
-  if (format->base.ref_count == 0)
-    return format;
+  assert(format->base.ref_count != FORMAT_REF_COUNT_INVALID);
+  //if (format->base.ref_count == 0)
+    //return format;
   ++(format->base.ref_count);
   return format;
 }
@@ -15,9 +15,9 @@ bulp_format_ref  (BulpFormat       *format)
 void
 bulp_format_unref (BulpFormat       *format)
 {
-  assert(format->base.ref_count == FORMAT_REF_COUNT_INVALID);
-  if (format->base.ref_count == 0)
-    return;
+  assert(format->base.ref_count != FORMAT_REF_COUNT_INVALID);
+  //if (format->base.ref_count == 0)
+    //return;
   if (--(format->base.ref_count) == 0)
     {
       format->base.ref_count = FORMAT_REF_COUNT_INVALID;

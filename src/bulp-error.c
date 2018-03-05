@@ -148,6 +148,40 @@ BulpError *bulp_error_new_bad_data (const char *format,
 }
 
 BulpError *
+bulp_error_new_missing_terminator (const char *format, ...)
+{
+  va_list args;
+  va_start (args, format);
+  BulpError *rv = bulp_error_new_protected_valist (BULP_ERROR_MISSING_TERMINATOR, 0, NULL,
+              "missing terminator: ", format, args);
+  va_end (args);
+  return rv;
+}
+
+BulpError *
+bulp_error_new_nonascii (void)
+{
+  return bulp_error_new_protected (BULP_ERROR_NONASCII,
+                                   0, NULL,
+                                   "nonascii character encountered");
+}
+BulpError * bulp_error_new_unexpected_nul (void)
+{
+  return bulp_error_new_protected (BULP_ERROR_NONASCII,
+                                   0, NULL,
+                                   "unexpected NUL encountered");
+}
+
+
+BulpError *bulp_error_new_bad_case_value (uint32_t value, const char *union_name)
+{
+  return bulp_error_new_protected (BULP_ERROR_BAD_CASE_VALUE,
+                                   0, NULL,
+                                   "value %u not defined for union %s",
+                                   value, union_name);
+}
+
+BulpError *
 bulp_error_new_unknown_format (const char *filename,
                                unsigned    line_no,
                                const char *dotted_name)

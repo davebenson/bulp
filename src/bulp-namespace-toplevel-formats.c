@@ -772,15 +772,7 @@ pack__ulong            (BulpFormat *format,
                         uint8_t *packed_data_out)
 {
   (void) format;
-  uint64_t v = * (uint64_t *) native_data;
-  unsigned rv = 0;
-  while (v >= 128)
-    {
-      packed_data_out[rv++] = 0x80 | v;
-      v >>= 7;
-    }
-  packed_data_out[rv++] = v;
-  return rv;
+  return bulp_ulong_pack (* (uint64_t *) native_data, packed_data_out);
 }
 
 static void
@@ -789,9 +781,7 @@ pack_to__ulong         (BulpFormat *format,
                         BulpDataBuilder *out)
 {
   (void) format;
-  uint8_t b[11];
-  unsigned rv = pack__ulong (format, native_data, b);
-  bulp_data_builder_append (out, rv, b);
+  bulp_ulong_pack_to (* (uint64_t *) native_data, out);
 }
 
 static size_t
@@ -802,30 +792,9 @@ unpack__ulong          (BulpFormat *format,
                         BulpMemPool *pool,
                         BulpError **error)
 {
-  unsigned n = 0;
-  unsigned shift = 0;
-  uint64_t rv = 0;
   (void) format;
   (void) pool;
-  do
-    {
-      if (BULP_UNLIKELY (n > 10))
-        {
-          *error = bulp_error_new_bad_data ("unpacking ulong");
-          return 0;
-        }
-      if (BULP_UNLIKELY (n < packed_len))
-        {
-          *error = bulp_error_new_too_short ("unpacking ulong");
-          return 0;
-        }
-      rv += ((uint64_t)(packed_data[n] & 0x7f) << shift);
-      shift += 7;
-    }
-  while ((packed_data[n++] & 0x80) != 0);
-
-  * (uint64_t *) native_data_out = rv;
-  return n;
+  return bulp_ulong_unpack (packed_len, packed_data, native_data_out, error);
 } 
 
 static void
@@ -846,22 +815,13 @@ static BulpFormatInt int_format__ulong = DEFINE_BULP_FORMAT_INT_GENERIC(
 /* --- short implementation --- */
 /* --- int implementation --- */
 /* --- long implementation --- */
-static inline uint16_t zigzag16 (int16_t sv)
-{
-  if (sv >= 0)
-    return (sv) * 2;
-  else
-    return 1 + (-sv) * 2;
-}
 #define validate_native__short NULL
 static size_t
 get_packed_size__short  (BulpFormat *format,
                           void *native_data)
 {
   (void) format;
-  int16_t sv = * (int16_t *) native_data;
-  uint16_t v = zigzag16 (sv);
-  return (v < (1<<7)) ? 1 : (v < (1<<14)) ? 2 : 3;
+  return bulp_short_get_packed_size (* (int16_t *) native_data);
 }
 
 static size_t
@@ -870,26 +830,7 @@ pack__short           (BulpFormat *format,
                         uint8_t *packed_data_out)
 {
   (void) format;
-  int16_t sv = * (int16_t *) native_data;
-  uint16_t v = zigzag16 (sv);
-  if (v < (1<<7))
-    {
-      packed_data_out[0] = v;
-      return 1;
-    }
-  else if (v < (1<<14))
-    {
-      packed_data_out[0] = v | 0x80;
-      packed_data_out[1] = v >> 7;
-      return 2;
-    }
-  else
-    {
-      packed_data_out[0] = v | 0x80;
-      packed_data_out[1] = (v >> 7) | 0x80;
-      packed_data_out[2] = (v >> 14);
-      return 3;
-    }
+  return bulp_short_pack (* (int16_t *) native_data, packed_data_out);
 }
 
 static void
@@ -898,9 +839,7 @@ pack_to__short         (BulpFormat *format,
                         BulpDataBuilder *out)
 {
   (void) format;
-  uint8_t b[3];
-  unsigned rv = pack__short (format, native_data, b);
-  bulp_data_builder_append (out, rv, b);
+  bulp_short_pack_to (* (int16_t *) native_data, out);
 }
 
 static size_t
@@ -913,35 +852,7 @@ unpack__short         (BulpFormat *format,
 {
   (void) format;
   (void) pool;
-  if ((packed_data[0] & 0x80) == 0)
-    {
-      * (uint16_t *) native_data_out = packed_data[0];
-      return 1;
-    }
-  if (BULP_UNLIKELY (packed_len < 2))
-    {
-      *error = bulp_error_new_too_short ("unpacking short");
-      return 0;
-    }
-  if ((packed_data[1] & 0x80) == 0)
-    {
-      * (uint16_t *) native_data_out = ((uint16_t)packed_data[1] << 7) | (packed_data[0] & 0x7f);
-      return 2;
-    }
-  if (BULP_UNLIKELY (packed_len < 3))
-    {
-      *error = bulp_error_new_too_short ("unpacking short");
-      return 0;
-    }
-  if ((packed_data[2] & 0x80) != 0)
-    {
-      *error = bulp_error_new_bad_data (">3 byte short encoding");
-      return 0;
-    }
-  * (uint16_t *) native_data_out = ((uint16_t)packed_data[2] << 14)
-                                 | ((uint16_t)(packed_data[1] & 0x7f) << 7)
-                                 | (packed_data[0] & 0x7f);
-  return 3;
+  return bulp_short_unpack (packed_len, packed_data, native_data_out, error);
 } 
 
 static void
@@ -963,11 +874,10 @@ static BulpFormatInt int_format__short = DEFINE_BULP_FORMAT_INT_GENERIC(
 #define validate_native__int NULL
 static size_t
 get_packed_size__int    (BulpFormat *format,
-                          void *native_data)
+                         void *native_data)
 {
   (void) format;
-  uint32_t v = * (uint32_t *) native_data;
-  return bulp_uint_get_packed_size (v);
+  return bulp_int_get_packed_size (* (int32_t *) native_data);
 }
 
 static size_t
@@ -1068,7 +978,7 @@ static BulpFormatInt int_format__long = DEFINE_BULP_FORMAT_INT_GENERIC(
   LONG,
   int64_t,
   64,
-  BULP_FALSE,
+  BULP_TRUE,
   BULP_TRUE
 );
 
@@ -1255,10 +1165,368 @@ dup_float_format (BulpFormatFloat *format_float)
   return (BulpFormat *) rv;
 }
 
+#define DEFINE_BULP_FORMAT_STRING_GENERIC(shortname, ucshortname, strtype, lentype) \
+{                                                                \
+  {                                                              \
+    BULP_FORMAT_TYPE_STRING,                                     \
+    1,                    /* ref-count */                        \
+    BULP_FORMAT_VFUNCS_DEFINE(shortname),                        \
+    NULL, NULL,                   /* canonical name/ns */        \
+    BULP_POINTER_ALIGNOF,                                        \
+    sizeof(void*),                                               \
+    BULP_TRUE, /* copy_with_memcpy */                            \
+    BULP_TRUE, /* is_zeroable */                                 \
+    "char *",                                                    \
+    "bulp_"  #shortname,                                         \
+    "BULP_"  #ucshortname,                                       \
+    NULL,       /* optional_of */                                \
+    NULL        /* array_of */                                   \
+  },                                                             \
+  BULP_STRING_TYPE_ ## strtype,                                  \
+  BULP_STRING_LENGTH_TYPE_ ## lentype,                           \
+}
+
+static bulp_bool
+validate_native__string  (BulpFormat *format,
+                          void *native_data,
+                          BulpError **error)
+{
+  (void) format;
+  BulpString *s = native_data;
+  return bulp_utf8_validate (s->length, (void *) s->str, error);
+}
+
+static size_t
+get_packed_size__string (BulpFormat *format,
+                          void *native_data)
+{
+  (void) format;
+  BulpString *s = native_data;
+  return bulp_uint_get_packed_size (s->length) + s->length;
+}
+
+static size_t
+pack__string             (BulpFormat *format,
+                          void *native_data,
+                          uint8_t *out)
+{
+  (void) format;
+  BulpString *s = native_data;
+  size_t rv = bulp_uint_pack (s->length, out);
+  memcpy (out+rv, s->str, s->length);
+  rv += s->length;
+  return rv;
+}
+
+static void
+pack_to__string          (BulpFormat *format,
+                          void *native_data,
+                          BulpDataBuilder *builder)
+{
+  (void) format;
+  BulpString *s = native_data;
+  bulp_uint_pack_to (s->length, builder);
+  bulp_data_builder_append_nocopy (builder, s->length, (void*) s->str);
+}
+
+static size_t
+unpack__string           (BulpFormat *format,
+                          size_t packed_len,
+                          const uint8_t *packed_data,
+                          void *native_data_out,
+                          BulpMemPool *pool,
+                          BulpError **error)
+{
+  (void) format;
+  (void) pool;
+  BulpString *s = native_data_out;
+  uint32_t len;
+  size_t used = bulp_uint_unpack (packed_len, packed_data, &len, error);
+  if (used + len > packed_len)
+    {
+      *error = bulp_error_new_too_short ("unpacking length-prefixed string");
+      return 0;
+    }
+  if (!bulp_utf8_validate (len, packed_data + used, error))
+    return 0;
+  s->str = (char *) packed_data + used;
+  s->length = len;
+  return used + len;
+}
+
+static void
+destruct_format__string (BulpFormat  *format)
+{
+  (void) format;
+}
+
+
+static BulpFormatString string_format__string =
+DEFINE_BULP_FORMAT_STRING_GENERIC(string, STRING, UTF8, LENGTH_PREFIXED);
+
+static bulp_bool
+validate_native__string0 (BulpFormat *format,
+                          void *native_data,
+                          BulpError **error)
+{
+  (void) format;
+  BulpString *s = native_data;
+  return bulp_utf8_validate_nonnul (s->length, (void *) s->str, error);
+}
+
+static size_t
+get_packed_size__string0 (BulpFormat *format,
+                          void *native_data)
+{
+  (void) format;
+  BulpString *s = native_data;
+  return s->length + 1;
+}
+
+static size_t
+pack__string0            (BulpFormat *format,
+                          void *native_data,
+                          uint8_t *out)
+{
+  (void) format;
+  BulpString *s = native_data;
+  memcpy (out, s->str, s->length);
+  out[s->length] = 0;
+  return s->length + 1;
+}
+
+static void
+pack_to__string0         (BulpFormat *format,
+                          void *native_data,
+                          BulpDataBuilder *builder)
+{
+  (void) format;
+  BulpString *s = native_data;
+  bulp_data_builder_append_nocopy (builder, s->length, (void*) s->str);
+  bulp_data_builder_append_byte (builder, 0);
+}
+
+static size_t
+unpack__string0          (BulpFormat *format,
+                          size_t packed_len,
+                          const uint8_t *packed_data,
+                          void *native_data_out,
+                          BulpMemPool *pool,
+                          BulpError **error)
+{
+  (void) format;
+  (void) pool;
+  const uint8_t *nul = memchr ((void*) packed_data, 0, packed_len);
+  if (nul == NULL)
+    {
+      *error = bulp_error_new_missing_terminator ("NUL expected");
+      return 0;
+    }
+  BulpString *s = native_data_out;
+  s->length = nul - packed_data;
+  s->str = (char*) packed_data;
+  if (!bulp_utf8_validate (s->length, packed_data, error))
+    return 0;
+  return s->length + 1;
+}
+
+static void
+destruct_format__string0(BulpFormat  *format)
+{
+  (void) format;
+}
+static BulpFormatString string_format__string0 =
+DEFINE_BULP_FORMAT_STRING_GENERIC(string0, STRING0, UTF8, NUL_TERMINATION);
+
+static bulp_bool
+validate_native__ascii   (BulpFormat *format,
+                          void *native_data,
+                          BulpError **error)
+{
+  (void) format;
+  BulpString *s = native_data;
+  for (unsigned i = 0; i < s->length; i++)
+    if (s->str[i] & 0x80)
+      {
+        *error = bulp_error_new_nonascii ();
+        return BULP_FALSE;
+      }
+  return BULP_TRUE;
+}
+
+static size_t
+get_packed_size__ascii   (BulpFormat *format,
+                          void *native_data)
+{
+  (void) format;
+  BulpString *s = native_data;
+  return bulp_uint_get_packed_size (s->length) + s->length;
+}
+
+static size_t
+pack__ascii              (BulpFormat *format,
+                          void *native_data,
+                          uint8_t *out)
+{
+  (void) format;
+  BulpString *s = native_data;
+  size_t rv = bulp_uint_pack (s->length, out);
+  memcpy (out+rv, s->str, s->length);
+  rv += s->length;
+  return rv;
+}
+
+static void
+pack_to__ascii           (BulpFormat *format,
+                          void *native_data,
+                          BulpDataBuilder *builder)
+{
+  (void) format;
+  BulpString *s = native_data;
+  bulp_uint_pack_to (s->length, builder);
+  bulp_data_builder_append_nocopy (builder, s->length, (void*) s->str);
+}
+
+static size_t
+unpack__ascii            (BulpFormat *format,
+                          size_t packed_len,
+                          const uint8_t *packed_data,
+                          void *native_data_out,
+                          BulpMemPool *pool,
+                          BulpError **error)
+{
+  (void) format;
+  (void) pool;
+  BulpString *s = native_data_out;
+  uint32_t len;
+  size_t used = bulp_uint_unpack (packed_len, packed_data, &len, error);
+  if (used + len > packed_len)
+    {
+      *error = bulp_error_new_too_short ("unpacking length-prefixed ascii string");
+      return 0;
+    }
+  const uint8_t *end = packed_data + used + len;
+  for (const uint8_t *at = packed_data + used; at < end; at++)
+    if (*at & 0x80)
+      {
+        *error = bulp_error_new_nonascii ();
+        return 0;
+      }
+  s->str = (char *) packed_data + used;
+  s->length = len;
+  return used + len;
+}
+
+static void
+destruct_format__ascii  (BulpFormat  *format)
+{
+  (void) format;
+}
+static BulpFormatString string_format__ascii =
+DEFINE_BULP_FORMAT_STRING_GENERIC(ascii, ASCII, ASCII, LENGTH_PREFIXED);
+
+bulp_bool
+validate_native__ascii0  (BulpFormat *format,
+                          void *native_data,
+                          BulpError **error)
+{
+  (void) format;
+  BulpString *s = native_data;
+  for (unsigned i = 0; i < s->length; i++)
+    if (s->str[i] & 0x80)
+      {
+        *error = bulp_error_new_nonascii ();
+        return BULP_FALSE;
+      }
+    else if (s->str[i] == 0)
+      {
+        *error = bulp_error_new_unexpected_nul ();
+        return BULP_FALSE;
+      }
+  return BULP_TRUE;
+}
+
+static size_t
+get_packed_size__ascii0  (BulpFormat *format,
+                          void *native_data)
+{
+  (void) format;
+  BulpString *s = native_data;
+  return s->length + 1;
+}
+
+static size_t
+pack__ascii0             (BulpFormat *format,
+                          void *native_data,
+                          uint8_t *out)
+{
+  (void) format;
+  BulpString *str = native_data;
+  memcpy (out, str->str, str->length);
+  out[str->length] = 0;
+  return str->length + 1;
+}
+
+
+static void
+pack_to__ascii0          (BulpFormat *format,
+                          void *native_data,
+                          BulpDataBuilder *builder)
+{
+  (void) format;
+  BulpString *s = native_data;
+  bulp_data_builder_append_nocopy (builder, s->length, (void*) s->str);
+  bulp_data_builder_append_byte (builder, 0);
+}
+
+static size_t
+unpack__ascii0           (BulpFormat *format,
+                          size_t packed_len,
+                          const uint8_t *packed_data,
+                          void *native_data_out,
+                          BulpMemPool *pool,
+                          BulpError **error)
+{
+  (void) format;
+  (void) pool;
+  const uint8_t *nul = memchr ((void*) packed_data, 0, packed_len);
+  if (nul == NULL)
+    {
+      *error = bulp_error_new_missing_terminator ("NUL expected");
+      return 0;
+    }
+  BulpString *s = native_data_out;
+  s->length = nul - packed_data;
+  s->str = (char*) packed_data;
+  for (unsigned i = 0; i < s->length; i++)
+    if (s->str[i] & 0x80)
+      {
+        *error = bulp_error_new_nonascii ();
+        return 0;
+      }
+  return s->length + 1;
+}
+
+static void
+destruct_format__ascii0 (BulpFormat  *format)
+{
+  (void) format;
+}
+static BulpFormatString string_format__ascii0 =
+DEFINE_BULP_FORMAT_STRING_GENERIC(ascii0, ASCII0, ASCII, NUL_TERMINATION);
+
+static BulpFormat *
+dup_string_format (BulpFormatString *format_string)
+{
+  BulpFormatString *rv = malloc (sizeof (BulpFormatString));
+  memcpy (rv, format_string, sizeof (BulpFormatString));
+  return (BulpFormat *) rv;
+}
+
 void
 _bulp_namespace_toplevel_add_builtins (BulpNamespaceToplevel *ns)
 {
-#define ADD_INT_TYPE_TO_NS(shortname)                                 \
+#define ADD_INT_TYPE_TO_NS(shortname)                                   \
   do{                                                                   \
     BulpFormat *tmp = dup_int_format(&int_format__##shortname);         \
     bulp_namespace_add_format (&ns->base, -1, #shortname, tmp, BULP_TRUE);  \
@@ -1271,7 +1539,7 @@ _bulp_namespace_toplevel_add_builtins (BulpNamespaceToplevel *ns)
   ADD_INT_TYPE_TO_NS(uint32);
   ADD_INT_TYPE_TO_NS(uint64);
   ADD_INT_TYPE_TO_NS(int8);
-  ADD_INT_TYPE_TO_NS(int16);
+    ADD_INT_TYPE_TO_NS(int16);
   ADD_INT_TYPE_TO_NS(int32);
   ADD_INT_TYPE_TO_NS(int64);
 
@@ -1296,4 +1564,18 @@ _bulp_namespace_toplevel_add_builtins (BulpNamespaceToplevel *ns)
   ADD_FLOAT_TYPE_TO_NS(float64);
 
 #undef ADD_FLOAT_TYPE_TO_NS
+
+#define ADD_STRING_TYPE_TO_NS(shortname)                               \
+  do{                                                                   \
+    BulpFormat *tmp = dup_string_format(&string_format__##shortname);     \
+    bulp_namespace_add_format (&ns->base, -1, #shortname, tmp, BULP_TRUE);\
+    ns->format_##shortname = tmp;                                       \
+    bulp_format_unref (tmp);                                            \
+  }while(0)
+
+  ADD_STRING_TYPE_TO_NS(string);
+  ADD_STRING_TYPE_TO_NS(string0);
+  ADD_STRING_TYPE_TO_NS(ascii);
+  ADD_STRING_TYPE_TO_NS(ascii0);
+#undef ADD_STRING_TYPE_TO_NS
 }

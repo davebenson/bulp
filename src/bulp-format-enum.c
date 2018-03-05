@@ -310,6 +310,7 @@ bulp_format_new_enum         (unsigned n_values,
   memset (rv, 0, sizeof (BulpFormatEnum));
 
   //  compute values
+  rv->n_values = n_values;
   rv->values = malloc (sizeof (BulpFormatEnumValue) * n_values);
   unsigned next_value = 0;
   for (unsigned i = 0; i < n_values; i++)
