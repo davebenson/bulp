@@ -1,3 +1,14 @@
+/* === Bool === */
+BULP_INLINE size_t bulp_bool_get_packed_size    (bulp_bool v);
+BULP_INLINE size_t bulp_bool_pack               (bulp_bool v,
+                                                 uint8_t *out);
+BULP_INLINE size_t bulp_bool_pack_to            (bulp_bool v,
+                                                 BulpDataBuilder *out);
+BULP_INLINE size_t bulp_bool_unpack             (size_t packed_len,
+                                                 const uint8_t *packed_data,
+                                                 bulp_bool *out,
+                                                 BulpError**error);
+
 /* === Fixed Length, Unsigned Integers (uint8, uint16, uint32, uint64) === */
 BULP_INLINE size_t bulp_uint8_get_packed_size   (uint8_t v);
 BULP_INLINE size_t bulp_uint8_pack              (uint8_t v,
@@ -140,6 +151,41 @@ BULP_INLINE size_t bulp_long_unpack             (size_t packed_len,
                                                  BulpError**error);
 
 #if BULP_CAN_INLINE || defined(BULP_INTERNAL_IMPLEMENT_INLINE_FUNCTIONS)
+BULP_INLINE size_t bulp_bool_get_packed_size    (bulp_bool v)
+{
+  (void) v;
+  return 1;
+}
+BULP_INLINE size_t bulp_bool_pack               (bulp_bool v,
+                                                 uint8_t *out)
+{
+  *out = v ? 1 : 0;
+  return 1;
+}
+BULP_INLINE size_t bulp_bool_pack_to            (bulp_bool v,
+                                                 BulpDataBuilder *out)
+{
+  bulp_data_builder_append_byte (out, v ? 1 : 0);
+  return 1;
+}
+BULP_INLINE size_t bulp_bool_unpack             (size_t packed_len,
+                                                 const uint8_t *packed_data,
+                                                 bulp_bool *out,
+                                                 BulpError**error)
+{
+  if (packed_len < 1)
+    {
+      *error = bulp_error_new_too_short ("unpacking bool");
+      return 0;
+    }
+  if (packed_data[0] > 1)
+    {
+      *error = bulp_error_new_bad_data ("bad boolean value");
+      return 0;
+    }
+  *out = packed_data[0] ? 1 : 0;
+  return 1;
+}
 BULP_INLINE size_t
 bulp_uint8_get_packed_size   (uint8_t v)
 {

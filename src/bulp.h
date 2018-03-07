@@ -8,6 +8,7 @@ typedef struct BulpError BulpError;
 #include <assert.h>
 #include <unistd.h>                     // for ssize_t
 #include <stdarg.h>
+#include <stdlib.h>
 #include <string.h>                     // used by some inline functions
 
 #include "bulp-defs.h"
@@ -15,10 +16,12 @@ typedef struct BulpError BulpError;
 #include "bulp-error.h"
 #include "bulp-util.h"
 #include "bulp-buffer.h"
+#include "bulp-slab.h"
 #include "bulp-mem-pool.h"
 #include "bulp-data-builder.h"
+#include "bulp-compression.h"
 
-#include "bulp-format.h"                        /* also includes namespace support */
+#include "bulp-format.h"      /* also includes namespace support */
 
 #include "bulp-filter.h"
 #include "bulp-mapper.h"

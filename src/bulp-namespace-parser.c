@@ -1597,11 +1597,12 @@ parse_enum_format (BulpNamespace *ns,
             }
           if (!is_uint (tokens[at].byte_length, file_data + tokens[at].byte_offset, &v.value_if_set))
             {
-              *error = bulp_error_new_parse (filename, tokens[at+2].line_no,
+              *error = bulp_error_new_parse (filename, tokens[at].line_no,
                                 "expected unsigned integer for enum value");
               return 0;
             }
           v.set_value = BULP_TRUE;
+          at++;
         }
       else
         {
@@ -1609,6 +1610,8 @@ parse_enum_format (BulpNamespace *ns,
         }
       if (n_values == values_alloced)
         {
+          values_alloced *= 2;
+          values = realloc (values, sizeof (BulpEnumValue) * values_alloced);
         }
       values[n_values++] = v;
 

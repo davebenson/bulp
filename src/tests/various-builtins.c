@@ -1872,7 +1872,7 @@ test__string_format (void)
   BulpString invalid_strings[] = {
     { 1, "\377" },
     { 1, "\200" },
-    { 1, "\302" },                                  // these 3 utf-8 codepoints takens from wikipedia
+    { 1, "\302" },
     { 2, "\342\202" },
     { 3, "\360\220\215" },
     { 1, "\342\202" },
@@ -2021,6 +2021,280 @@ test__ascii0_format (void)
     }
 }
 
+static void
+test__string0_format (void)
+{
+  BulpNamespace *ns = bulp_namespace_new_global ();
+  BulpNamespaceEntry res;
+  TEST_ASSERT (bulp_namespace_query_1 (ns, "string0", &res));
+  TEST_ASSERT (res.type == BULP_NAMESPACE_ENTRY_FORMAT);
+  BulpFormat *f = res.info.v_format;
+  assert(f->type == BULP_FORMAT_TYPE_STRING);
+  assert(f->v_string.string_type == BULP_STRING_TYPE_UTF8);
+  assert(f->v_string.length_type == BULP_STRING_LENGTH_TYPE_NUL_TERMINATION);
+  assert(strcmp(f->base.canonical_name, "string0") == 0);
+
+  BulpString valid_strings[] = {
+    { 0, "" },
+    { 0, NULL },
+    { 1, "a" },
+    { 3, "foo" },
+    { 127, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+    { 128, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+    { 2, "\302\242" },                                  // these 3 utf-8 codepoints takens from wikipedia
+    { 3, "\342\202\254" },
+    { 4, "\360\220\215\210" },
+  };
+  for (unsigned i = 0; i < sizeof(valid_strings)/sizeof(valid_strings[0]); i++)
+    {
+      BulpError *e = NULL;
+      TEST_ASSERT (f->base.vfuncs.validate_native (f, &valid_strings[i], &e));
+      TEST_ASSERT (e == NULL);
+
+      //fprintf(stderr, "test case %u: value=%0.6f\n", i, test_vectors[i].value);
+      unsigned packed_length = valid_strings[i].length + 1;
+      TEST_ASSERT (bulp_string0_get_packed_size (valid_strings[i]) == packed_length);
+      TEST_ASSERT (f->base.vfuncs.get_packed_size (f, &valid_strings[i]) == packed_length);
+      size_t out_length = packed_length + 10;
+      uint8_t *out = malloc (out_length);
+
+      TEST_ASSERT (bulp_string0_pack (valid_strings[i], out) == packed_length);
+      TEST_ASSERT (memcmp (out, valid_strings[i].str, valid_strings[i].length) == 0);
+      TEST_ASSERT (out[valid_strings[i].length] == 0);
+
+      uint8_t *out_copy = malloc (packed_length);
+      memcpy (out_copy, out, packed_length);
+
+      memset (out, 0xff, out_length);
+      TEST_ASSERT (f->base.vfuncs.pack (f, &valid_strings[i], out) == packed_length);
+
+      BULP_DATA_BUILDER_DECLARE_ON_STACK(builder, 20, 20);
+      bulp_string0_pack_to (valid_strings[i], &builder);
+      TEST_ASSERT(builder.cur_len == packed_length);
+      memset (out, 0xff, out_length);
+      bulp_data_builder_build (&builder, out);
+      TEST_ASSERT (memcmp (out_copy, out, packed_length) == 0);
+
+      BULP_DATA_BUILDER_RESET_ON_STACK (builder);
+      f->base.vfuncs.pack_to (f, &valid_strings[i], &builder);
+      assert(builder.cur_len == packed_length);
+      memset (out, 0xff, out_length);
+      bulp_data_builder_build (&builder, out);
+      TEST_ASSERT (memcmp (out_copy, out, packed_length) == 0);
+
+      bulp_data_builder_clear (&builder);           // does nothing, since all allocations are on stack
+
+      BulpString v;
+      BulpError *error = NULL;
+      TEST_ASSERT (bulp_string0_unpack (packed_length, out_copy, &v, &error) == packed_length);
+      TEST_ASSERT (v.length == valid_strings[i].length);
+      TEST_ASSERT (memcmp (v.str, valid_strings[i].str, valid_strings[i].length) == 0);
+      TEST_ASSERT (error == NULL);
+
+      v.length = 0; v.str = NULL;
+      TEST_ASSERT (f->base.vfuncs.unpack (f, packed_length, out, &v, NULL, &error) == packed_length);
+      TEST_ASSERT (v.length == valid_strings[i].length);
+      TEST_ASSERT (memcmp (v.str, valid_strings[i].str, valid_strings[i].length) == 0);
+      TEST_ASSERT (error == NULL);
+    }
+
+  {
+    BulpString s = {1, "\0"};
+    BulpError *error = NULL;
+    TEST_ASSERT (!f->base.vfuncs.validate_native (f, &s, &error));
+    TEST_ASSERT (error != NULL);
+    bulp_error_unref (error);
+    error = NULL;
+  }
+
+  BulpString invalid_strings[] = {
+    { 1, "\377" },
+    { 1, "\200" },
+    { 1, "\302" },
+    { 2, "\342\202" },
+    { 3, "\360\220\215" },
+    { 1, "\342\202" },
+    { 2, "\360\220" },
+    { 1, "\360" },
+  };
+  for (unsigned i = 0; i < sizeof(invalid_strings)/sizeof(invalid_strings[0]); i++)
+    {
+      BulpError *error = NULL;
+      TEST_ASSERT (!f->base.vfuncs.validate_native (f, &invalid_strings[i], &error));
+      TEST_ASSERT (error != NULL);
+      bulp_error_unref (error);
+      error = NULL;
+
+      BulpString v;
+      size_t len = invalid_strings[i].length;
+      size_t lenlen = bulp_uint_get_packed_size (len);
+      uint8_t *out_copy = malloc (len + lenlen);
+      TEST_ASSERT (bulp_uint_pack (len, out_copy) == lenlen);
+      memcpy (out_copy + lenlen, invalid_strings[i].str, len);
+      TEST_ASSERT (bulp_ascii_unpack (len + lenlen, out_copy, &v, &error) == 0);
+      TEST_ASSERT (error != NULL);
+      bulp_error_unref (error);
+      error = NULL;
+
+      v.length = 0; v.str = NULL;
+      TEST_ASSERT (f->base.vfuncs.unpack (f, len + lenlen, out_copy, &v, NULL, &error) == 0);
+      TEST_ASSERT (error != NULL);
+      bulp_error_unref (error);
+      error = NULL;
+    }
+}
+
+static void
+test__binary_data_format (void)
+{
+  BulpNamespace *ns = bulp_namespace_new_global ();
+  BulpNamespaceEntry res;
+  TEST_ASSERT (bulp_namespace_query_1 (ns, "binary_data", &res));
+  TEST_ASSERT (res.type == BULP_NAMESPACE_ENTRY_FORMAT);
+  BulpFormat *f = res.info.v_format;
+  TEST_ASSERT(f->type == BULP_FORMAT_TYPE_BINARY_DATA);
+  static uint32_t lengths[] = {
+    0,
+    1,
+    10,
+    127,
+    128,
+    (1<<14) - 1,
+    (1<<14)
+  };
+  unsigned n_lengths = sizeof(lengths)/sizeof(lengths[0]);
+  for (unsigned i = 0 ; i < n_lengths; i++)
+    {
+      BulpBinaryData bd = { lengths[i], malloc (lengths[i]) };
+      memset (bd.data, 0xde, bd.length);
+      size_t packed_len = bulp_binary_data_get_packed_size (bd);
+      TEST_ASSERT(packed_len == bulp_uint_get_packed_size(bd.length) + bd.length);
+      uint8_t *out = malloc (packed_len);
+      TEST_ASSERT (packed_len == bulp_binary_data_pack (bd, out));
+      BulpBinaryData newbd;
+      BulpError *error = NULL;
+      TEST_ASSERT (bulp_binary_data_unpack (packed_len, out, &newbd, &error));
+      TEST_ASSERT (error == NULL);
+      TEST_ASSERT (newbd.length == bd.length);
+      TEST_ASSERT (memcmp (newbd.data, bd.data, bd.length) == 0);
+
+      newbd.length = 0xffffff;
+      newbd.data = (void *) 0x1;
+      TEST_ASSERT (f->base.vfuncs.unpack (f, packed_len, out, &newbd, NULL, &error));
+      TEST_ASSERT (error == NULL);
+      TEST_ASSERT (newbd.length == bd.length);
+      TEST_ASSERT (memcmp (newbd.data, bd.data, bd.length) == 0);
+
+      free (bd.data);
+      free (out);
+    }
+}
+
+static void
+test__bool_format (void)
+{
+  BulpNamespace *ns = bulp_namespace_new_global ();
+  BulpNamespaceEntry res;
+  bulp_bool vTRUE = 1, vFALSE = 0, v2 = 2;
+  TEST_ASSERT (bulp_namespace_query_1 (ns, "bool", &res));
+  TEST_ASSERT (res.type == BULP_NAMESPACE_ENTRY_FORMAT);
+  BulpFormat *f = res.info.v_format;
+  assert(f->type == BULP_FORMAT_TYPE_ENUM);
+  assert(f->v_enum.n_values == 2);
+
+  {
+    BulpError *e = NULL;
+    TEST_ASSERT (f->base.vfuncs.validate_native (f, &vTRUE, &e));
+    TEST_ASSERT (e == NULL);
+    TEST_ASSERT (f->base.vfuncs.validate_native (f, &vFALSE, &e));
+    TEST_ASSERT (e == NULL);
+    TEST_ASSERT (!f->base.vfuncs.validate_native (f, &v2, &e));
+    TEST_ASSERT (e != NULL);
+    bulp_error_unref (e); e = NULL;
+
+    //fprintf(stderr, "test case %u: value=%0.6f\n", i, test_vectors[i].value);
+    TEST_ASSERT (bulp_bool_get_packed_size (vFALSE) == 1);
+    TEST_ASSERT (bulp_bool_get_packed_size (vTRUE) == 1);
+    TEST_ASSERT (f->base.vfuncs.get_packed_size (f, &vFALSE) == 1);
+    TEST_ASSERT (f->base.vfuncs.get_packed_size (f, &vTRUE) == 1);
+    uint8_t out[10];
+
+    TEST_ASSERT (bulp_bool_pack (vTRUE, out) == 1);
+    TEST_ASSERT (out[0] == 1);
+    TEST_ASSERT (bulp_bool_pack (vFALSE, out) == 1);
+    TEST_ASSERT (out[0] == 0);
+
+    out[0] = 200;
+    TEST_ASSERT (f->base.vfuncs.pack (f, &vTRUE, out) == 1);
+    TEST_ASSERT (out[0] == 1);
+    TEST_ASSERT (f->base.vfuncs.pack (f, &vFALSE, out) == 1);
+    TEST_ASSERT (out[0] == 0);
+
+    BULP_DATA_BUILDER_DECLARE_ON_STACK(builder, 20, 20);
+    bulp_bool_pack_to (vTRUE, &builder);
+    TEST_ASSERT(builder.cur_len == 1);
+    memset (out, 0xff, sizeof(out));
+    bulp_data_builder_build (&builder, out);
+    TEST_ASSERT (out[0] == 1);
+
+    BULP_DATA_BUILDER_RESET_ON_STACK (builder);
+    bulp_bool_pack_to (vFALSE, &builder);
+    TEST_ASSERT(builder.cur_len == 1);
+    memset (out, 0xff, sizeof(out));
+    bulp_data_builder_build (&builder, out);
+    TEST_ASSERT (out[0] == 0);
+
+    BULP_DATA_BUILDER_RESET_ON_STACK (builder);
+    f->base.vfuncs.pack_to (f, &vTRUE, &builder);
+    TEST_ASSERT(builder.cur_len == 1);
+    memset (out, 0xff, sizeof(out));
+    bulp_data_builder_build (&builder, out);
+    TEST_ASSERT (out[0] == 1);
+
+    BULP_DATA_BUILDER_RESET_ON_STACK (builder);
+    f->base.vfuncs.pack_to (f, &vFALSE, &builder);
+    TEST_ASSERT(builder.cur_len == 1);
+    memset (out, 0xff, sizeof(out));
+    bulp_data_builder_build (&builder, out);
+    TEST_ASSERT (out[0] == 0);
+    bulp_data_builder_clear (&builder);           // does nothing, since all allocations are on stack
+
+    bulp_bool v;
+    BulpError *error = NULL;
+    out[0] = 0;
+    TEST_ASSERT (bulp_bool_unpack (10, out, &v, &error) == 1);
+    TEST_ASSERT (v == 0);
+    TEST_ASSERT (error == NULL);
+
+    out[0] = 1;
+    TEST_ASSERT (bulp_bool_unpack (10, out, &v, &error) == 1);
+    TEST_ASSERT (v == 1);
+    TEST_ASSERT (error == NULL);
+
+    out[0] = 2;
+    TEST_ASSERT (bulp_bool_unpack (10, out, &v, &error) == 0);
+    TEST_ASSERT (error != NULL);
+    bulp_error_unref (error);
+    error = NULL;
+
+    out[0] = 0;
+    TEST_ASSERT (f->base.vfuncs.unpack (f, 10, out, &v, NULL, &error) == 1);
+    TEST_ASSERT (v == 0);
+    TEST_ASSERT (error == NULL);
+
+    out[0] = 1;
+    TEST_ASSERT (f->base.vfuncs.unpack (f, 10, out, &v, NULL, &error) == 1);
+    TEST_ASSERT (v == 1);
+    TEST_ASSERT (error == NULL);
+
+    out[0] = 2;
+    TEST_ASSERT (f->base.vfuncs.unpack (f, 10, out, &v, NULL, &error) == 0);
+    TEST_ASSERT (error != NULL);
+    bulp_error_unref (error);
+    error = NULL;
+  }
+}
+
 
 static struct {
   const char *name;
@@ -2045,13 +2319,9 @@ static struct {
   { "ascii test",    test__ascii_format },
   { "string test",   test__string_format },
   { "ascii0 test",   test__ascii0_format },
-
-  // TODO
-#if 0
   { "string0 test",  test__string0_format },
-  { "binary-data test",  test__binary_data_format },
   { "bool test",  test__bool_format },
-#endif
+  { "binary-data test",  test__binary_data_format },
 };
                                  
 int main()

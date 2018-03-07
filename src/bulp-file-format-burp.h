@@ -1,8 +1,4 @@
 
-#define BULP_BURP_HEADER_MAGIC "..."
-#define BULP_BURP_HEADER_MAGIC_LEN 8
-#define BULP_BURP_RECORD_START "..."
-#define BULP_BURP_RECORD_START_LEN 8
 
 typedef struct BulpReaderBurpOptions BulpReaderBurpOptions;
 
@@ -17,13 +13,18 @@ struct BulpReaderBurpOptions {
 
   /* may be NULL to indicate that any format is ok */
   BulpFormat *format;
+
+  /* uncompressed, zlib, ??? */
+  BulpCompressionOptions compression_options;
 };
 
-#define BULP_READER_BURP_OPTIONS             \
-{                                            \
-  -1,   /* dir_fd_atfile */                  \
-  NULL, /* fileanme */                       \
-  NULL, /* format */                         \
+#define BULP_READER_BURP_OPTIONS                    \
+{                                                   \
+  -1,   /* dir_fd_atfile */                         \
+  NULL, /* fileanme */                              \
+  NULL, /* format */                                \
+  0,    /* compression algo (0=uncompressed) */     \
+  BULP_COMPRESSION_DEFAULTS                         \
 }
 
 
@@ -45,7 +46,7 @@ struct BulpWriterBurpOptions {
   BulpFormat *format;
 };
 
-#define BULP_READER_BURP_OPTIONS             \
+#define BULP_WRITER_BURP_OPTIONS             \
 {                                            \
   -1,   /* dir_fd_atfile */                  \
   NULL, /* fileanme */                       \

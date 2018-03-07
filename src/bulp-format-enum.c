@@ -2,6 +2,7 @@
 #include "bulp-internals.h"
 #include "../generated/bulp-machdep-config.h"
 #include <string.h>
+#include <stdio.h>
 
 static int
 part_str_compare (ssize_t name_len, const char *name, const char *b)
@@ -98,7 +99,7 @@ get_packed_size__enum1 (BulpFormat *format,
                        void *native_data)
 {
   (void) format;
-  return bulp_uint32_get_packed_size (* (uint8_t *) native_data);
+  return bulp_uint_get_packed_size (* (uint8_t *) native_data);
 }
 static size_t
 pack__enum1           (BulpFormat *format,
@@ -106,7 +107,7 @@ pack__enum1           (BulpFormat *format,
                        uint8_t *packed_data_out)
 {
   (void) format;
-  return bulp_uint32_pack (* (uint8_t *) native_data, packed_data_out);
+  return bulp_uint_pack (* (uint8_t *) native_data, packed_data_out);
 }
 static void
 pack_to__enum1        (BulpFormat *format,
@@ -114,7 +115,7 @@ pack_to__enum1        (BulpFormat *format,
                        BulpDataBuilder *out)
 {
   (void) format;
-  bulp_uint32_pack_to (* (uint8_t *) native_data, out);
+  bulp_uint_pack_to (* (uint8_t *) native_data, out);
 }
 static size_t
 unpack__enum1         (BulpFormat *format,
@@ -127,7 +128,7 @@ unpack__enum1         (BulpFormat *format,
   (void) pool;
   (void) error;
   uint32_t v;
-  size_t rv = bulp_uint32_unpack (packed_len, packed_data, &v, error);
+  size_t rv = bulp_uint_unpack (packed_len, packed_data, &v, error);
   if (rv == 0)
     return 0;
   if (bulp_format_enum_lookup_by_value (format, v) == NULL)
@@ -166,7 +167,7 @@ get_packed_size__enum2 (BulpFormat *format,
                        void *native_data)
 {
   (void) format;
-  return bulp_uint32_get_packed_size (* (uint16_t *) native_data);
+  return bulp_uint_get_packed_size (* (uint16_t *) native_data);
 }
 static size_t
 pack__enum2           (BulpFormat *format,
@@ -174,7 +175,7 @@ pack__enum2           (BulpFormat *format,
                        uint8_t *packed_data_out)
 {
   (void) format;
-  return bulp_uint32_pack (* (uint16_t *) native_data, packed_data_out);
+  return bulp_uint_pack (* (uint16_t *) native_data, packed_data_out);
 }
 static void
 pack_to__enum2        (BulpFormat *format,
@@ -182,7 +183,7 @@ pack_to__enum2        (BulpFormat *format,
                        BulpDataBuilder *out)
 {
   (void) format;
-  bulp_uint32_pack_to (* (uint16_t *) native_data, out);
+  bulp_uint_pack_to (* (uint16_t *) native_data, out);
 }
 static size_t
 unpack__enum2         (BulpFormat *format,
@@ -195,7 +196,7 @@ unpack__enum2         (BulpFormat *format,
   (void) pool;
   (void) error;
   uint32_t v;
-  size_t rv = bulp_uint32_unpack (packed_len, packed_data, &v, error);
+  size_t rv = bulp_uint_unpack (packed_len, packed_data, &v, error);
   if (rv == 0)
     return 0;
   if (bulp_format_enum_lookup_by_value (format, v) == NULL)
@@ -235,7 +236,7 @@ get_packed_size__enum4 (BulpFormat *format,
                        void *native_data)
 {
   (void) format;
-  return bulp_uint32_get_packed_size (* (uint32_t *) native_data);
+  return bulp_uint_get_packed_size (* (uint32_t *) native_data);
 }
 static size_t
 pack__enum4           (BulpFormat *format,
@@ -243,7 +244,7 @@ pack__enum4           (BulpFormat *format,
                        uint8_t *packed_data_out)
 {
   (void) format;
-  return bulp_uint32_pack (* (uint32_t *) native_data, packed_data_out);
+  return bulp_uint_pack (* (uint32_t *) native_data, packed_data_out);
 }
 static void
 pack_to__enum4        (BulpFormat *format,
@@ -251,7 +252,7 @@ pack_to__enum4        (BulpFormat *format,
                        BulpDataBuilder *out)
 {
   (void) format;
-  bulp_uint32_pack_to (* (uint32_t *) native_data, out);
+  bulp_uint_pack_to (* (uint32_t *) native_data, out);
 }
 static size_t
 unpack__enum4         (BulpFormat *format,
@@ -264,7 +265,7 @@ unpack__enum4         (BulpFormat *format,
   (void) format;
   (void) pool;
   uint32_t v;
-  size_t rv = bulp_uint32_unpack (packed_len, packed_data, &v, error);
+  size_t rv = bulp_uint_unpack (packed_len, packed_data, &v, error);
   if (rv == 0)
     return 0;
   if (bulp_format_enum_lookup_by_value (format, v) == NULL)
@@ -317,7 +318,14 @@ bulp_format_new_enum         (unsigned n_values,
     {
       unsigned v = (values[i].set_value) ?  values[i].value_if_set : next_value;
       rv->values[i].value = v;
-      rv->values[i].name = strdup (values[i].name);
+      if (values[i].name_len > 0)
+        {
+          unsigned len = values[i].name_len;
+          rv->values[i].name = memcpy (malloc (len + 1), values[i].name, len);
+          rv->values[i].name[len] = 0;
+        }
+      else
+        rv->values[i].name = strdup (values[i].name);
 
       next_value = v + 1;
     }

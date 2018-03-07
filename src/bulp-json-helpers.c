@@ -17,7 +17,7 @@ bulp_json_find_number_length (size_t data_length,
                               unsigned *lineno_inout,
                               BulpError **error)
 {
-  const uint8_t *at = data;
+  const uint8_t *at = data + start_offset;
   const uint8_t *end = data + data_length;
   (void) start_offset;
   assert(data_length > 0);
@@ -27,7 +27,7 @@ bulp_json_find_number_length (size_t data_length,
       if (at == end)
         goto too_short;
     }
-  if (*data == '0')
+  if (*at == '0')
     at++;
   else
     {
@@ -60,7 +60,7 @@ bulp_json_find_number_length (size_t data_length,
       while (at < end && ('0' <= *at && *at <= '9'))
         at++;
     }
-  return at - data;
+  return at - (data + start_offset);
 
 too_short:
   *error = bulp_error_new_too_short ("too short scanning number at %s:%u", filename, *lineno_inout);

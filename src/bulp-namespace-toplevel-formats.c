@@ -1515,6 +1515,83 @@ dup_string_format (BulpFormatString *format_string)
   memcpy (rv, format_string, sizeof (BulpFormatString));
   return (BulpFormat *) rv;
 }
+// =====================================================================
+//                          BINARY-DATA FORMAT
+// =====================================================================
+
+#define validate_native__binary_data NULL
+static size_t
+get_packed_size__binary_data (BulpFormat *format,
+                              void *native_data)
+{
+  (void)format;
+  BulpBinaryData *bd = native_data;
+  return bulp_binary_data_get_packed_size (*bd);
+}
+
+static size_t
+pack__binary_data            (BulpFormat *format,
+                              void *native_data,
+                              uint8_t *out)
+{
+  (void)format;
+  BulpBinaryData *bd = native_data;
+  return bulp_binary_data_pack (*bd, out);
+}
+
+static void
+pack_to__binary_data         (BulpFormat *format,
+                              void *native_data,
+                              BulpDataBuilder *builder)
+{
+  (void)format;
+  BulpBinaryData *bd = native_data;
+  bulp_binary_data_pack_to (*bd, builder);
+}
+
+static size_t
+unpack__binary_data          (BulpFormat *format,
+                              size_t packed_len,
+                              const uint8_t *packed_data,
+                              void *native_data_out,
+                              BulpMemPool *pool,
+                              BulpError **error)
+{
+  (void) format;
+  (void) pool;
+  return bulp_binary_data_unpack (packed_len, packed_data, native_data_out, error);
+}
+
+static void
+destruct_format__binary_data (BulpFormat  *format)
+{
+  (void) format;
+}
+
+
+static BulpFormatBinaryData format__binary_data =
+{
+  {
+    BULP_FORMAT_TYPE_BINARY_DATA,
+    1,
+    BULP_FORMAT_VFUNCS_DEFINE(binary_data),
+    NULL, NULL,
+    sizeof (BulpBinaryData), BULP_POINTER_ALIGNOF,
+    BULP_FALSE, BULP_TRUE,
+    "BulpBinaryData",
+    "bulp_binary_data",
+    "BULP_BINARY_DATA",
+    NULL,
+    NULL
+  }
+};
+static BulpFormat *
+dup_binary_data_format (BulpFormatBinaryData *f)
+{
+  BulpFormatBinaryData *rv = malloc (sizeof (BulpFormatBinaryData));
+  memcpy (rv, f, sizeof (BulpFormatBinaryData));
+  return (BulpFormat *) rv;
+}
 
 // =====================================================================
 //                          ENUM FORMATS
@@ -1575,12 +1652,12 @@ unpack__bool          (BulpFormat *format,
   if (packed_len < 1)
     {
       *error = bulp_error_new_too_short ("unpacking bool");
-      return BULP_FALSE;
+      return 0;
     }
   if (packed_data[0] > 1)
     {
       *error = bulp_error_new_bad_case_value (packed_data[0], "bool");
-      return BULP_FALSE;
+      return 0;
     }
   * (bulp_bool *) native_data_out = packed_data[0];
   return 1;
@@ -1691,6 +1768,12 @@ _bulp_namespace_toplevel_add_builtins (BulpNamespaceToplevel *ns)
   ADD_STRING_TYPE_TO_NS(ascii0);
 #undef ADD_STRING_TYPE_TO_NS
 
+  {
+    BulpFormat *tmp = dup_binary_data_format(&format__binary_data);
+    bulp_namespace_add_format (&ns->base, -1, "binary_data", tmp, BULP_TRUE);  
+    ns->format_binary_data = tmp;                                       
+    bulp_format_unref (tmp);                                            
+  }
 
 #define ADD_ENUM_TYPE_TO_NS(shortname)                                  \
   do{                                                                   \

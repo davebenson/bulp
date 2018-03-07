@@ -176,12 +176,12 @@ bulp_bool      bulp_namespace_query            (BulpNamespace *ns,
       else if (*end == 0)
         {
           // final component: just call query_1_len
-          return bulp_namespace_query_1_len (ns, end-at, at, out);
+          return bulp_namespace_query_1_len (ns_at, end-at, at, out);
         }
       else
         {
           // lookup
-          if (!bulp_namespace_query_1_len (ns, end-at, at, out))
+          if (!bulp_namespace_query_1_len (ns_at, end-at, at, out))
             return BULP_FALSE;
           // if not a subnamespace, fail.
           if (out->type != BULP_NAMESPACE_ENTRY_SUBNAMESPACE)
@@ -323,4 +323,3 @@ void           bulp_namespace_unref (BulpNamespace *ns)
       free (ns);
     }
 }
-

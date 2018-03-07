@@ -217,33 +217,49 @@ found_nul:
 }
 
 
-#if 0
 BULP_INLINE bulp_bool bulp_string0_validate        (BulpString str,
-                                                 BulpError **error);
+                                                 BulpError **error)
 {
+  return bulp_utf8_validate_nonnul (str.length, (const uint8_t *) str.str, error);
 }
 
-BULP_INLINE size_t bulp_string0_get_packed_size (BulpString str);
+BULP_INLINE size_t bulp_string0_get_packed_size (BulpString str)
 {
+  return str.length + 1;
 }
 
 BULP_INLINE size_t bulp_string0_pack            (BulpString str,
-                                                 uint8_t *out);
+                                                 uint8_t *out)
 {
+  memcpy (out, str.str, str.length);
+  out[str.length] = 0;
+  return str.length + 1;
 }
 
 BULP_INLINE size_t bulp_string0_pack_to         (BulpString str,
-                                                 BulpDataBuilder *out);
+                                                 BulpDataBuilder *out)
 {
+  bulp_data_builder_append_nocopy (out, str.length, (uint8_t *) str.str);
+  bulp_data_builder_append_byte (out, 0);
+  return str.length + 1;
 }
 
 BULP_INLINE size_t bulp_string0_unpack          (size_t packed_len,
                                                  const uint8_t *packed_data,
                                                  BulpString *out,
-                                                 BulpError**error);
+                                                 BulpError**error)
 {
+  const uint8_t *nul = memchr (packed_data, 0, packed_len);
+  if (nul == NULL)
+    {
+      *error = bulp_error_new_missing_terminator ("expected NUL after string0 string");
+      return 0;
+    }
+  out->str = (char*) packed_data;
+  out->length = nul - packed_data;
+  if (!bulp_utf8_validate (out->length, (const uint8_t *) out->str, error))
+    return 0;
+  return nul + 1 - packed_data;
 }
-
-#endif
 
 #endif

@@ -2,7 +2,7 @@ CFLAGS = -std=c99 -W -Wall -g
 
 all: lib/libbulp.a
 
-SIMPLE_TESTS = bin/tests/format-parser-0 bin/tests/various-builtins
+SIMPLE_TESTS = bin/tests/format-parser-0 bin/tests/various-builtins bin/tests/enums-0
 
 check: $(SIMPLE_TESTS)
 	@for t in $(SIMPLE_TESTS) ; do echo "*** Running $$t ***" 1>&2 ; ./$$t ; done
