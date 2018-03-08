@@ -21,6 +21,8 @@ obj/bulp-format-struct.o \
 obj/bulp-format-optional.o \
 obj/bulp-format-union.o \
 obj/bulp-format.o \
+obj/bulp-readonly-index.o \
+obj/bulp-sorted-indexer.o \
 obj/bulp-namespace-toplevel-formats.o \
 obj/bulp-inlines.o \
 obj/bulp-json-helpers.o \

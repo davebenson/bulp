@@ -3,7 +3,9 @@ typedef struct BulpSortedIndexer BulpSortedIndexer;
 
 BulpSortedIndexer *
 bulp_sorted_indexer_new          (const char *base_filename,
-                                  BulpCompressionOptions *comp_options);
+                                  BulpCompressionOptions *comp_options,
+                                  BulpSlab *shared_compression_buffer,
+                                  BulpError             **error);
 
 bulp_bool
 bulp_sorted_indexer_write        (BulpSortedIndexer *indexer,
@@ -13,7 +15,7 @@ bulp_sorted_indexer_write        (BulpSortedIndexer *indexer,
                                   const uint8_t     *value,
                                   BulpError        **error);
 
-typedef BulpSortedIndexerResultType {
+typedef enum BulpSortedIndexerResultType {
   /* the amount of work was small enough that we did it synchronously */
   BULP_SORTED_INDEXER_RESULT_GOT_INDEX,
 
@@ -29,19 +31,20 @@ typedef struct {
   BulpSortedIndexerResultType result_type;
   union {
     struct {
-      BulpSortedIndex *sorted_index;
-    } got_index;
+      BulpReadonlyIndex *sorted_index;
+    } converted_to_index;
     struct {
-      unsigned n_finishes       // number of times you have called "finish"
+      unsigned n_finishes;      // number of times you have called "finish"
     } processing;
     BulpError *error;
-  }
-} BulpSortedIndexerResult
+  } info;
+} BulpSortedIndexerResult;
 
 BulpSortedIndexerResult
 bulp_sorted_indexer_finish       (BulpSortedIndexer *indexer);
 
 
+/* This should be called UNLESS finish() returns CONVERTED_TO_INDEX. */
 void
 bulp_sorted_indexer_destroy      (BulpSortedIndexer *indexer,
                                   bulp_bool          delete_files);

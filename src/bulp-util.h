@@ -8,6 +8,11 @@ uint8_t *bulp_util_file_load (const char *filename,
 
 BULP_INLINE size_t bulp_align(size_t value, size_t alignment);
 
+bulp_bool bulp_util_writen (int fd,
+                            size_t len,
+                            const void *data,
+                            BulpError**error);
+
 #define BULP_MAX(a,b) (((a)>(b)) ? (b) : (a))
 #define BULP_MIN(a,b) (((a)<(b)) ? (b) : (a))
 

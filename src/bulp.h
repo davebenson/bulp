@@ -38,6 +38,10 @@ typedef struct BulpError BulpError;
 #include "bulp-builtins-string.h"
 #include "bulp-builtins-binary-data.h"
 
+#include "bulp-indexer-defs.h"
+#include "bulp-readonly-index.h"
+#include "bulp-sorted-indexer.h"
+
 // internals
 #include "bulp-json-helpers.h"
 
