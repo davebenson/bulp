@@ -8,6 +8,15 @@ bulp_readonly_index_new (const char *filename_prefix,
                          BulpComparator *comparator,
                          BulpCompressionOptions *options)
 {
+  BulpFormat *format = ...;
+
+  if (!bulp_util_read_file (...))
+    {
+      return BULP_FALSE;
+    }
+     
+
+            
   ...
 }
 
