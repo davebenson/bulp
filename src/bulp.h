@@ -47,6 +47,8 @@ typedef struct BulpError BulpError;
 
 // internals
 #include "bulp-json-helpers.h"
+#include "bulp-rand.h"
 #include "bulp-codegen.h"
+#include "bulp-sorted-str-gen.h"
 
 #endif

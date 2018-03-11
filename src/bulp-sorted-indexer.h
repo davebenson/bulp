@@ -21,7 +21,7 @@ typedef enum BulpSortedIndexerResultType {
 
   /* the amount of work was too large: we did some work, but you must call
    * bulp_sorted_indexer_finish() again. */
-  BULP_SORTED_INDEXER_RESULT_RETRY_FINISH,
+  BULP_SORTED_INDEXER_RESULT_RUNNING,
 
   /* something failed while finishing the indexer. */
   BULP_SORTED_INDEXER_RESULT_ERROR

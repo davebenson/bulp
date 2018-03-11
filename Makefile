@@ -2,7 +2,8 @@ CFLAGS = -std=c99 -W -Wall -g
 
 all: lib/libbulp.a
 
-SIMPLE_TESTS = bin/tests/format-parser-0 bin/tests/various-builtins bin/tests/enums-0
+SIMPLE_TESTS = bin/tests/format-parser-0 bin/tests/various-builtins bin/tests/enums-0 \
+ bin/tests/test-sorted-str-gen
 
 check: $(SIMPLE_TESTS)
 	@for t in $(SIMPLE_TESTS) ; do echo "*** Running $$t ***" 1>&2 ; ./$$t ; done
@@ -21,15 +22,21 @@ obj/bulp-format-struct.o \
 obj/bulp-format-optional.o \
 obj/bulp-format-union.o \
 obj/bulp-format.o \
+obj/bulp-rand.o \
 obj/bulp-readonly-index.o \
 obj/bulp-sorted-indexer.o \
 obj/bulp-namespace-toplevel-formats.o \
 obj/bulp-inlines.o \
 obj/bulp-json-helpers.o \
+obj/bulp-sorted-str-gen.o \
 obj/bulp-util.o \
 obj/bulp-utf.o
 	@mkdir -p lib
 	ar cru $@ $^
+
+bin/tests/%: src/tests/%.c lib/libbulp.a
+	@mkdir -p bin/tests
+	$(CC) -g -W -Wall -o $@ src/tests/$*.c -Llib -lbulp 
 
 bin/tests/%: src/tests/%.c lib/libbulp.a
 	@mkdir -p bin/tests

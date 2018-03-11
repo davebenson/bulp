@@ -390,9 +390,31 @@ bulp_sorted_indexer_finish (BulpSortedIndexer *indexer)
   return rv;
 }
 
-void
-bulp_sorted_indexer_destroy (BulpSortedIndexer *indexer)
+static void
+handle_deletion_done (BulpHelperProcessResult result,
+                      BulpError              *error,       // usually NULL
+                      void                   *callback_data)
 {
+  BulpSortedIndexer *indexer = callback_data;
+  (void) result;
+  if (error != NULL)
+    {
+      indexer->finish_status = FINISH_FAILED;
+    }
+  else
+    {
+      indexer->finish_status = FINISH_DONE;
+    }
+  free (indexer->levels);
+  free (indexer->pre_compressed_data);
+  free (indexer);
+}
+
+void
+bulp_sorted_indexer_destroy (BulpSortedIndexer *indexer,
+                             bulp_bool          delete_files)
+{
+  (void) delete_files;  // XXX todo
   if (indexer->finish_status == FINISH_RUNNING)
     {
       indexer->finish_status = FINISH_DESTROYED_WHILE_RUNNING;
@@ -401,12 +423,9 @@ bulp_sorted_indexer_destroy (BulpSortedIndexer *indexer)
   else if (indexer->finish_status == FINISH_NOT_STARTED)
     {
       close_all_fds (indexer);
-      for (unsigned i = 0; i < indexer->n_levels; i++)
-        {
-          ... delete files
-        }
-      bulp_helper_process_delete_sorted_index (NULL, ..., indexer->n_levels);
-      bulp_helper_process_delete_file (NULL, ...);
+      indexer->filename_pad[indexer->base_filename_len] = 0;
+      bulp_helper_process_delete_sorted_index (NULL, indexer->filename_pad, indexer->n_levels,
+                                               handle_deletion_done, indexer);
     }
   else
     {
