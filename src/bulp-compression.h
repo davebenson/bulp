@@ -14,11 +14,12 @@ typedef struct {
 #define BULP_COMPRESSION_OPTIONS_INIT { BULP_COMPRESSION_ALGORITHM_SNAPPY, 5, 32 }
 
 
-void bulp_decompress (BulpCompressionOptions *options,
-                      size_t                  compressed_length,
-                      const uint8_t          *compressed_data,
-                      BulpSlab               *uncompressed_data_out);
-void bulp_compress   (BulpCompressionOptions *options,
-                      size_t                  uncompressed_length,
-                      const uint8_t          *uncompressed_data,
-                      BulpSlab               *compressed_data_out);
+bulp_bool bulp_decompress (BulpCompressionAlgorithm algo,
+                           size_t                   compressed_length,
+                           const uint8_t           *compressed_data,
+                           BulpSlab                *uncompressed_data_out,
+                           BulpError              **error);
+void      bulp_compress   (BulpCompressionOptions *options,
+                           size_t                  uncompressed_length,
+                           const uint8_t          *uncompressed_data,
+                           BulpSlab               *compressed_data_out);

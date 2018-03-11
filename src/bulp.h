@@ -11,6 +11,7 @@ typedef struct BulpError BulpError;
 #include <stdlib.h>
 #include <string.h>                     // used by some inline functions
 
+#include "bulp.generated.h"
 #include "bulp-defs.h"
 #include "bulp-object.h"
 #include "bulp-error.h"
@@ -30,9 +31,11 @@ typedef struct BulpError BulpError;
 #include "bulp-file-format-burp.h"
 #include "bulp-stream-api.h"
 
+// utf8 and utf16 handling
+#include "bulp-utf.h"
+
 // mostly for machine-generated code, but occasionally useful directly for
 // unpacking/packing fundamental formats.
-#include "bulp-utf.h"
 #include "bulp-builtins-int.h"
 #include "bulp-builtins-float.h"
 #include "bulp-builtins-string.h"
@@ -44,5 +47,6 @@ typedef struct BulpError BulpError;
 
 // internals
 #include "bulp-json-helpers.h"
+#include "bulp-codegen.h"
 
 #endif

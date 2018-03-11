@@ -35,14 +35,13 @@ bin/tests/%: src/tests/%.c lib/libbulp.a
 	@mkdir -p bin/tests
 	$(CC) -g -W -Wall -o $@ src/tests/$*.c -Llib -lbulp 
 
-generated/bulp-machdep-config.h: build/generate-bulp-machdep-config
-	@test -d generated || mkdir generated
-	./build/generate-bulp-machdep-config > generated/bulp-machdep-config.h
+src/bulp.generated.h: build/generate-bulp-machdep-config
+	./build/generate-bulp-machdep-config > src/bulp.generated.h
 
 build/generate-bulp-machdep-config: build/generate-bulp-machdep-config.c
 	$(CC) -W -Wall -o $@ $^
 
-obj/%.o: src/%.c generated/bulp-machdep-config.h
+obj/%.o: src/%.c src/bulp.generated.h
 	@mkdir -p obj
 	$(CC) $(CFLAGS) -c -o $@ $<
 

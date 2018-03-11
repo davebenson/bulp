@@ -6,13 +6,6 @@
 #include <fcntl.h>
 #include "bulp-helper-process.h"
 
-typedef struct {
-  uint64_t key_offset;
-  uint64_t compressed_blob_offset;
-  uint32_t key_length;
-  uint32_t compressed_blob_length;
-} IndexEntry;
-
 #if BULP_IS_LITTLE_ENDIAN
 #define make_index_entry_little_endian(ie)
 #else
@@ -49,7 +42,10 @@ typedef enum
 {
   FINISH_NOT_STARTED,
   FINISH_RUNNING,
-  FINISH_DONE
+  FINISH_DONE,
+  FINISH_FAILED,
+  FINISH_DESTROYED_WHILE_RUNNING,
+  FINISH_DESTROYED
 } FinishStatus;
 
 struct JournalHeader
@@ -102,6 +98,7 @@ struct BulpSortedIndexer
   BulpSlab *compressed_data;
 
   FinishStatus finish_status;
+  BulpError *finish_error;
 };
 
 static const char *set_filename (BulpSortedIndexer *indexer, const char *format, ...) BULP_PRINTF_LIKE(2,3);
@@ -126,6 +123,18 @@ n_least_signif_zeroes (uint32_t i)
     if ((i & (1 << rv)) != 0)
       return rv;
   return rv;
+}
+
+
+static void
+close_all_fds (BulpSortedIndexer *indexer)
+{
+  close (indexer->heap_fd);
+  for (unsigned i = 0; i < indexer->n_levels; i++)
+    {
+      close (indexer->levels[i].index_fd);
+      close (indexer->levels[i].key_heap_fd);
+    }
 }
 
 BulpSortedIndexer *
@@ -241,13 +250,13 @@ open_key_heap_file:
   BulpSortedIndexerIndexLevel *level = indexer->levels + which_level;
 
   // write to index file (key location and compressed-blob location)
-  IndexEntry index_entry;
+  BulpIndexEntry index_entry;
   index_entry.key_offset = level->key_heap_size;
   index_entry.key_length = indexer->first_key_length;
   index_entry.compressed_blob_offset = indexer->total_blob_size;
   index_entry.compressed_blob_length = indexer->compressed_data->length;
   make_index_entry_little_endian (&index_entry);
-  if (!bulp_util_writen (level->index_fd, sizeof (IndexEntry), &index_entry, error))
+  if (!bulp_util_writen (level->index_fd, sizeof (BulpIndexEntry), &index_entry, error))
     {
       bulp_error_append_message (*error, " (writing index-entry at level %u)", which_level);
       return BULP_FALSE;
@@ -304,6 +313,37 @@ bulp_sorted_indexer_write      (BulpSortedIndexer *indexer,
   return BULP_TRUE;
 }
 
+static void
+handle_concat_done    (BulpHelperProcessResult result,
+                       BulpError              *error,
+                       void                   *callback_data)
+{
+  BulpSortedIndexer *indexer = callback_data;
+  switch (result)
+    {
+    case BULP_HELPER_PROCESS_SUCCESS:
+      if (indexer->finish_status == FINISH_DESTROYED_WHILE_RUNNING)
+        {
+          close_all_fds (indexer);
+          indexer->finish_status = FINISH_DESTROYED;
+          free (indexer->levels);
+          free (indexer->pre_compressed_data);
+          free (indexer);
+        }
+      else
+        {
+          indexer->finish_status = FINISH_DONE;
+        }
+      return;
+    case BULP_HELPER_PROCESS_ERROR:
+      indexer->finish_status = FINISH_FAILED;
+      indexer->finish_error = bulp_error_ref (error);
+      return;
+    case BULP_HELPER_PROCESS_CANCELLED:
+      return;
+    }
+}
+
 BulpSortedIndexerResult
 bulp_sorted_indexer_finish (BulpSortedIndexer *indexer)
 {
@@ -312,7 +352,7 @@ bulp_sorted_indexer_finish (BulpSortedIndexer *indexer)
   assert(indexer->finish_status == FINISH_NOT_STARTED);
 
   /* close all file-descriptors */
-  ...
+  close_all_fds (indexer);
 
   /* is the total amount of data manageable?
    * if so, write a placeholder, write the data, delete placeholder.
@@ -323,17 +363,18 @@ bulp_sorted_indexer_finish (BulpSortedIndexer *indexer)
     {
       BulpError *error = NULL;
       if (!bulp_helper_foreground_concat_sorted_levels
-                      (indexer->filename_pad,
+                      (NULL,
+                       indexer->filename_pad,
                        indexer->n_levels,
                        &error))
         {
-          rv.type = BULP_SORTED_INDEXER_RESULT_ERROR;
+          rv.result_type = BULP_SORTED_INDEXER_RESULT_ERROR;
           rv.info.error = error;
           indexer->finish_status = FINISH_FAILED;
         }
       else
         {
-          rv.type = BULP_SORTED_INDEXER_RESULT_FINISHED;
+          rv.result_type = BULP_SORTED_INDEXER_RESULT_GOT_INDEX;
           indexer->finish_status = FINISH_DONE;
         }
     }
@@ -344,7 +385,7 @@ bulp_sorted_indexer_finish (BulpSortedIndexer *indexer)
           indexer->filename_pad, indexer->n_levels,
           handle_concat_done,
           indexer);
-      rv.type = BULP_SORTED_INDEXER_RESULT_RUNNING;
+      rv.result_type = BULP_SORTED_INDEXER_RESULT_RUNNING;
     }
   return rv;
 }
@@ -359,10 +400,19 @@ bulp_sorted_indexer_destroy (BulpSortedIndexer *indexer)
     }
   else if (indexer->finish_status == FINISH_NOT_STARTED)
     {
-      ... delete files
+      close_all_fds (indexer);
+      for (unsigned i = 0; i < indexer->n_levels; i++)
+        {
+          ... delete files
+        }
+      bulp_helper_process_delete_sorted_index (NULL, ..., indexer->n_levels);
+      bulp_helper_process_delete_file (NULL, ...);
     }
   else
     {
-      ...
+      indexer->finish_status = FINISH_DESTROYED;
+      free (indexer->levels);
+      free (indexer->pre_compressed_data);
+      free (indexer);
     }
 }

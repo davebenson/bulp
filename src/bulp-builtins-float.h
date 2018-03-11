@@ -29,7 +29,7 @@ BULP_INLINE size_t
 bulp_float32_pack (float v, uint8_t *out)
 {
 #if BULP_IS_LITTLE_ENDIAN
-  memcpy (out, native_data, 4);
+  memcpy (out, &v, 4);
 #else
   union { uint32_t i; float f; } u;
   u.f = v;
@@ -44,7 +44,7 @@ BULP_INLINE size_t
 bulp_float32_pack_to (float v, BulpDataBuilder *b)
 {
 #if BULP_IS_LITTLE_ENDIAN
-  bulp_data_builder_append (b, 4, &v);
+  bulp_data_builder_append (b, 4, (void *) &v);
 #else
   uint8_t out[4];
   bulp_float32_pack (v, out);
@@ -98,7 +98,7 @@ BULP_INLINE size_t
 bulp_float64_pack_to (double v, BulpDataBuilder *b)
 {
 #if BULP_IS_LITTLE_ENDIAN
-  bulp_data_builder_append (b, 8, &v);
+  bulp_data_builder_append (b, 8, (void *) &v);
 #else
   uint8_t out[8];
   bulp_float64_pack (v, out);

@@ -244,7 +244,7 @@ bulp_uint16_pack_to          (uint16_t v,
                               BulpDataBuilder *out)
 {
 #if BULP_IS_LITTLE_ENDIAN
-  bulp_data_builder_append (out, 2, &v);
+  bulp_data_builder_append (out, 2, (void *) &v);
 #else
   uint8_t buf[2] = { v, v >> 8 };
   bulp_data_builder_append (out, 2, buf);
@@ -296,7 +296,7 @@ bulp_uint32_pack_to          (uint32_t v,
                               BulpDataBuilder *out)
 {
 #if BULP_IS_LITTLE_ENDIAN
-  bulp_data_builder_append (out, 4, &v);
+  bulp_data_builder_append (out, 4, (void *) &v);
 #else
   uint8_t buf[4];
   buf[0] = v;
@@ -359,7 +359,7 @@ bulp_uint64_pack_to          (uint64_t v,
                               BulpDataBuilder *out)
 {
 #if BULP_IS_LITTLE_ENDIAN
-  bulp_data_builder_append (out, 8, &v);
+  bulp_data_builder_append (out, 8, (void *) &v);
 #else
   uint8_t buf[8];
   bulp_uint64_pack (v, buf);

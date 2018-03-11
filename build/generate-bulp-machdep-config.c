@@ -6,17 +6,20 @@
 #include <stdarg.h>
 #include <unistd.h>
 #include <assert.h>
-#include "../src/bulp-defs.h"
-#include "../src/bulp-object.h"
-#include "../src/bulp-error.h"
-#include "../src/bulp-util.h"
+//#include "../src/bulp-defs.h"
+//#include "../src/bulp-object.h"
+//#include "../src/bulp-error.h"
+//#include "../src/bulp-util.h"
+#define bulp_bool int
+#define BULP_FALSE 0
+#define BULP_TRUE 1
 
 #ifndef offsetof
 #define offsetof(st, m) ((size_t)&(((st *)0)->m))
 #endif
 
 
-#if 1
+#if 0
 static void
 print_binary (const uint8_t *v, unsigned nbytes)
 {
@@ -38,6 +41,22 @@ print_hex (const uint8_t *v, unsigned nbytes)
   printf("\n");
 }
 #endif
+
+static void
+config_endian()
+{
+  union {
+    uint32_t i;
+    uint8_t d[4];
+  } u;
+  u.i = 0x01020304;
+  if (memcmp (u.d, "\001\002\003\004", 4) == 0)
+    printf ("#define BULP_IS_LITTLE_ENDIAN 0\n");
+  else if (memcmp (u.d, "\004\003\002\001", 4) == 0)
+    printf ("#define BULP_IS_LITTLE_ENDIAN 1\n");
+  else
+    assert(0);
+}
 
 /* 8-bit.  */
 struct Packed8_1bit_1 { uint8_t a:1; };
@@ -579,6 +598,7 @@ config_enum_sizes (void)
 
 int main()
 {
+  config_endian();
   config_8bit();
   config_16bit();
   config_32bit();

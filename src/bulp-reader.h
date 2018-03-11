@@ -1,11 +1,3 @@
-
-typedef enum
-{
-  BULP_READ_RESULT_OK,
-  BULP_READ_RESULT_EOF,
-  BULP_READ_RESULT_ERROR
-} BulpReadResult;
-
 typedef enum
 {
   BULP_READER_CLOSE_OK,
@@ -23,18 +15,22 @@ struct BulpReaderClass {
   BulpClass base_class;
 
   // initial values
-  BulpReadResult (*peek) (BulpReader *reader, size_t *data_length_out, uint8_t **data_out, BulpError **error);
+  BulpReadResult (*peek) (BulpReader *reader,
+                          size_t *data_length_out,
+                          const uint8_t **data_out,
+                          BulpError **error);
   BulpReadResult (*advance) (BulpReader *reader, BulpError **error);
 
   // optional
   BulpReaderCloseResult (*close) (BulpReader *reader, BulpError **error);
 };
+extern BulpReaderClass bulp_reader_class;
 
 struct BulpReader {
   BulpObject base_instance;
   BulpFormat *reader_format;
 
-  BulpReadResult (*peek) (BulpReader *reader, size_t *data_length_out, uint8_t **data_out, BulpError **error);
+  BulpReadResult (*peek) (BulpReader *reader, size_t *data_length_out, const uint8_t **data_out, BulpError **error);
   BulpReadResult (*advance) (BulpReader *reader, BulpError **error);
 
 };

@@ -7,10 +7,15 @@ struct BulpSlab
   uint8_t *data;
 };
 
-BULP_INLINE void     bulp_slab_init     (BulpSlab *slab);
-BULP_INLINE uint8_t *bulp_slab_set_size (BulpSlab *slab,
-                                         size_t    size);
-BULP_INLINE void     bulp_slab_clear    (BulpSlab *slab);
+BULP_INLINE void     bulp_slab_init     (BulpSlab      *slab);
+BULP_INLINE uint8_t *bulp_slab_set_size (BulpSlab      *slab,
+                                         size_t         size);
+BULP_INLINE uint8_t *bulp_slab_set_data (BulpSlab      *slab,
+                                         size_t         size,
+                                         const uint8_t *data);
+BULP_INLINE uint8_t *bulp_slab_memdup   (BulpSlab      *slab);
+BULP_INLINE uint8_t *bulp_slab_get_end  (BulpSlab      *slab);
+BULP_INLINE void     bulp_slab_clear    (BulpSlab      *slab);
 
 #if BULP_CAN_INLINE || defined(BULP_INTERNAL_IMPLEMENT_INLINE_FUNCTIONS)
 BULP_INLINE void     bulp_slab_init     (BulpSlab *slab)
@@ -33,6 +38,16 @@ bulp_slab_set_size (BulpSlab *slab,
     }
   slab->length = size;
   return slab->data;
+}
+BULP_INLINE uint8_t *bulp_slab_memdup   (BulpSlab      *slab)
+{
+  uint8_t *rv = malloc (slab->length);
+  memcpy (rv, slab->data, slab->length);
+  return rv;
+}
+BULP_INLINE uint8_t *bulp_slab_get_end  (BulpSlab      *slab)
+{
+  return slab->data + slab->length;
 }
 
 BULP_INLINE void

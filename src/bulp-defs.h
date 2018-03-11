@@ -1,6 +1,4 @@
 
-
-
 typedef int bulp_bool;
 #define BULP_FALSE 0
 #define BULP_TRUE  1
@@ -52,6 +50,14 @@ typedef int bulp_bool;
 #define BULP_RBRACKET_STR   "]"
 #define BULP_RPAREN_STR     ")"
 
+
+typedef enum
+{
+  BULP_READ_RESULT_OK,
+  BULP_READ_RESULT_EOF,
+  BULP_READ_RESULT_ERROR
+} BulpReadResult;
+
 typedef struct BulpArray BulpArray;
 struct BulpArray
 {
@@ -72,3 +78,39 @@ struct BulpBinaryData
   unsigned length;                 // in bytes
   uint8_t *data;
 };
+
+BULP_INLINE uint32_t bulp_uint32_to_little_endian (uint32_t input);
+BULP_INLINE uint64_t bulp_uint64_to_little_endian (uint64_t input);
+#define bulp_uint32_to_little_endian bulp_uint32_from_little_endian
+#define bulp_uint64_to_little_endian bulp_uint64_from_little_endian
+
+#if BULP_CAN_INLINE || defined(BULP_INTERNAL_IMPLEMENT_INLINE_FUNCTIONS)
+BULP_INLINE uint32_t bulp_uint32_to_little_endian (uint32_t input)
+{
+#if BULP_IS_LITTLE_ENDIAN
+  return input;
+#else
+  return (input >> 24)
+       | (input << 24)
+       | ((input << 8) & 0xff0000)
+       | ((input >> 8) & 0xff00);
+#endif
+}
+
+BULP_INLINE uint64_t bulp_uint64_to_little_endian (uint64_t input)
+{
+#if BULP_IS_LITTLE_ENDIAN
+  return input;
+#else
+  return (input >> 56)
+       | (input << 56)
+       | ((input << 40) & 0xff000000000000ULL)
+       | ((input >> 40) & 0xff00)
+       | ((input << 24) & 0xff0000000000ULL)
+       | ((input >> 24) & 0xff0000)
+       | ((input << 8) & 0xff00000000ULL)
+       | ((input >> 8) & 0xff000000);
+#endif
+}
+
+#endif

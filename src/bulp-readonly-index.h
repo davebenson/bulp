@@ -12,7 +12,8 @@ typedef enum {
 BulpReadonlyIndex *
 bulp_readonly_index_new          (const char *filename_prefix,
                                   BulpComparator *comparator,
-                                  BulpCompressionOptions *options);
+                                  BulpCompressionOptions *options,
+                                  BulpError           **error);
 
 BulpReadonlyIndexLookupResult
 bulp_readonly_index_lookup       (BulpReadonlyIndex    *index,
@@ -22,11 +23,10 @@ bulp_readonly_index_lookup       (BulpReadonlyIndex    *index,
                                   BulpError           **error);
 
 BulpReader *
-bulp_readonly_index_create_reader(BulpReadonlyIndex    *index);
-
-BulpReader *
 bulp_readonly_index_reader_new   (const char           *filename_prefix,
-                                  BulpCompressionOptions *options);
+                                  BulpCompressionAlgorithm algo,
+                                  BulpFormat *format,
+                                  BulpError **Error);
 
 void
 bulp_readonly_index_destroy      (BulpReadonlyIndex    *index);
