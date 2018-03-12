@@ -16,6 +16,7 @@ typedef void (*BulpHelperProcessCallback)
                        BulpError              *error,       // usually NULL
                        void                   *callback_data);
 
+#if 0
 /* higher levels are concatenated */
 void
 bulp_helper_process_concat_sorted_levels(BulpHelperProcess *hp,
@@ -23,6 +24,7 @@ bulp_helper_process_concat_sorted_levels(BulpHelperProcess *hp,
                                          unsigned           n_levels,
                                          BulpHelperProcessCallback callback,
                                          void              *callback_data);
+#endif
 
 void
 bulp_helper_process_delete_sorted_index (BulpHelperProcess *hp,
@@ -34,11 +36,13 @@ bulp_helper_process_delete_sorted_index (BulpHelperProcess *hp,
 void
 bulp_helper_process_destroy             (BulpHelperProcess *hp);
 
+#if 0
 bulp_bool
 bulp_helper_foreground_concat_sorted_levels(BulpHelperProcess *hp,
                                             const char        *filename_prefix,
                                             unsigned           n_levels,
                                             BulpError        **error);
+#endif
 
 bulp_bool
 bulp_helper_foreground_delete_sorted_index (BulpHelperProcess *hp,

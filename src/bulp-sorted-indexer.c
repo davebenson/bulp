@@ -95,9 +95,14 @@ struct BulpSortedIndexer
   size_t pre_compressed_size;
   uint8_t *pre_compressed_data;
 
+  BulpFormat *key_format;
+  BulpFormat *value_format;
+
   BulpSlab *compressed_data;
 
   FinishStatus finish_status;
+  unsigned finish_level;
+  uint64_t finish_level_at;
   BulpError *finish_error;
 };
 
@@ -141,6 +146,8 @@ BulpSortedIndexer *
 bulp_sorted_indexer_new        (const char *base_filename,
                                 BulpCompressionOptions *comp_options,
                                 BulpSlab *shared_compression_buffer,
+                                BulpFormat             *key_format,
+                                BulpFormat             *value_format,
                                 BulpError **error)
 {
   int heap_fd;
@@ -166,6 +173,8 @@ open_stats:
   rv->n_blobs = 0;
   rv->total_key_bytes = 0;
   rv->total_value_bytes = 0;
+  rv->key_format = bulp_format_ref (key_format);
+  rv->value_format = bulp_format_ref (value_format);
       
   rv->compression_options = *comp_options;
   rv->pre_compressed_max_count = comp_options->records_per_chunk;

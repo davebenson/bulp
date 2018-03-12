@@ -368,12 +368,12 @@ BulpFormat * bulp_namespace_get_uint64      (BulpNamespace *toplevel_ns);
 BulpFormat * bulp_namespace_get_float32     (BulpNamespace *toplevel_ns);
 BulpFormat * bulp_namespace_get_float64     (BulpNamespace *toplevel_ns);
 
-#define bulp_format_ascii       ((BulpFormat *) (&bulp_format_strings_global[0]))
-#define bulp_format_string      ((BulpFormat *) (&bulp_format_strings_global[1]))
-#define bulp_format_ascii0      ((BulpFormat *) (&bulp_format_strings_global[2]))
-#define bulp_format_string0     ((BulpFormat *) (&bulp_format_strings_global[3]))
+BulpFormat * bulp_namespace_get_ascii       (BulpNamespace *toplevel_ns);
+BulpFormat * bulp_namespace_get_string      (BulpNamespace *toplevel_ns);
+BulpFormat * bulp_namespace_get_ascii0      (BulpNamespace *toplevel_ns);
+BulpFormat * bulp_namespace_get_string0     (BulpNamespace *toplevel_ns);
 
-#define bulp_format_binary_data ((BulpFormat *) (&bulp_format_binary_data_global))
+BulpFormat * bulp_namespace_get_binary_data (BulpNamespace *toplevel_ns);
 
 /* refers to a process-wide global-namespace */
 BulpNamespace *bulp_namespace_global (void);

@@ -15,7 +15,7 @@ bulp_bool bulp_util_writen (int fd,
                             BulpError**error);
 BulpReadResult bulp_util_readn  (int fd,
                                  size_t len,
-                                 const void *data,
+                                 void *data,
                                  BulpError**error);
 
 bulp_bool bulp_util_pread (int fd, void *out, size_t amt, uint64_t offset, BulpError **error);

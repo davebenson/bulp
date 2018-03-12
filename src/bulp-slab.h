@@ -6,7 +6,7 @@ struct BulpSlab
   size_t alloced;
   uint8_t *data;
 };
-
+#define BULP_SLAB_INIT {0,0,NULL}
 BULP_INLINE void     bulp_slab_init     (BulpSlab      *slab);
 BULP_INLINE uint8_t *bulp_slab_set_size (BulpSlab      *slab,
                                          size_t         size);
@@ -38,6 +38,13 @@ bulp_slab_set_size (BulpSlab *slab,
     }
   slab->length = size;
   return slab->data;
+}
+BULP_INLINE uint8_t *
+bulp_slab_set_data (BulpSlab      *slab,
+                    size_t         size,
+                    const uint8_t *data)
+{
+  return memcpy (bulp_slab_set_size (slab, size), data, size);
 }
 BULP_INLINE uint8_t *bulp_slab_memdup   (BulpSlab      *slab)
 {

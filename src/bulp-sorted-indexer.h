@@ -5,6 +5,8 @@ BulpSortedIndexer *
 bulp_sorted_indexer_new          (const char *base_filename,
                                   BulpCompressionOptions *comp_options,
                                   BulpSlab *shared_compression_buffer,
+                                  BulpFormat             *key_format,
+                                  BulpFormat             *value_format,
                                   BulpError             **error);
 
 bulp_bool

@@ -88,3 +88,89 @@ uint8_t *bulp_util_file_load (const char *filename,
   *length_out = total;
   return out;
 }
+
+bulp_bool bulp_util_writen (int fd,
+                            size_t len,
+                            const void *data,
+                            BulpError**error)
+{
+  size_t rem = len;
+  const uint8_t *at = data;
+  while (rem > 0)
+    {
+      ssize_t writerv = write (fd, at, rem);
+      if (writerv < 0)
+        {
+          if (errno == EINTR)
+            continue;
+          *error = bulp_error_new_file_write (errno);
+          return BULP_FALSE;
+        }
+      rem -= writerv;
+      at += writerv;
+    }
+  return BULP_TRUE;
+}
+BulpReadResult bulp_util_readn  (int fd,
+                                 size_t len,
+                                 void *data,
+                                 BulpError**error)
+{
+  size_t rem = len;
+  uint8_t *at = data;
+  while (rem > 0)
+    {
+      ssize_t readrv = read (fd, at, rem);
+      if (readrv < 0)
+        {
+          if (errno == EINTR)
+            continue;
+          *error = bulp_error_new_file_read (errno);
+          return BULP_READ_RESULT_ERROR;
+        }
+      else if (readrv == 0)
+        {
+          if (rem != len)
+            {
+              *error = bulp_error_new_too_short ("reading from file descriptor %d", fd);
+              return BULP_READ_RESULT_ERROR;
+            }
+          return BULP_READ_RESULT_EOF;
+        }
+
+      rem -= readrv;
+      at += readrv;
+    }
+  return BULP_READ_RESULT_OK;
+}
+
+bulp_bool
+bulp_util_pread (int fd, void *out, size_t amt, uint64_t offset, BulpError **error)
+{
+  size_t rem = amt;
+  size_t off = offset;
+  uint8_t *at = out;
+  while (rem > 0)
+    {
+      ssize_t pread_rv = pread (fd, at, rem, off);
+      if (pread_rv < 0)
+        {
+          if (errno == EINTR)
+            continue;
+          *error = bulp_error_new_file_read (errno);
+          return BULP_FALSE;
+        }
+      else if (pread_rv == 0)
+        {
+          *error = bulp_error_new_too_short ("reading from file descriptor %d", fd);
+          return BULP_FALSE;
+        }
+      else
+        {
+          rem -= pread_rv;
+          at += pread_rv;
+        }
+    }
+  return BULP_TRUE;
+}
+

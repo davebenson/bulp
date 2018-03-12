@@ -1,5 +1,4 @@
 #include "bulp.h"
-#include "bulp-rand.h"
 
 // splitmix64 generator to seed prng
 void     bulp_rand_init1    (BulpRand *rand,

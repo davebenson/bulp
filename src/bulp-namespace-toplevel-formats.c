@@ -1785,3 +1785,31 @@ _bulp_namespace_toplevel_add_builtins (BulpNamespaceToplevel *ns)
   ADD_ENUM_TYPE_TO_NS(bool);
 #undef ADD_ENUM_TYPE_TO_NS
 }
+
+#define IMPL_GETTER(shortname) \
+BulpFormat * bulp_namespace_get_##shortname (BulpNamespace *toplevel_ns) \
+{ \
+  BulpNamespaceToplevel *t = (BulpNamespaceToplevel *) toplevel_ns; \
+  return t->format_##shortname; \
+}
+IMPL_GETTER(int)
+IMPL_GETTER(long)
+IMPL_GETTER(ushort)
+IMPL_GETTER(uint)
+IMPL_GETTER(ulong)
+IMPL_GETTER(int8)
+IMPL_GETTER(int16)
+IMPL_GETTER(int32)
+IMPL_GETTER(int64)
+IMPL_GETTER(uint8)
+IMPL_GETTER(uint16)
+IMPL_GETTER(uint32)
+IMPL_GETTER(uint64)
+IMPL_GETTER(float32)
+IMPL_GETTER(float64)
+IMPL_GETTER(ascii)
+IMPL_GETTER(string)
+IMPL_GETTER(ascii0)
+IMPL_GETTER(string0)
+IMPL_GETTER(binary_data)
+#undef IMPL_GETTER

@@ -1,9 +1,9 @@
-CFLAGS = -std=c99 -W -Wall -g 
+CFLAGS = -std=c99 -W -Wall -g -I$(HOME)/brew/include
 
 all: lib/libbulp.a
 
 SIMPLE_TESTS = bin/tests/format-parser-0 bin/tests/various-builtins bin/tests/enums-0 \
- bin/tests/test-sorted-str-gen
+ bin/tests/test-sorted-str-gen bin/tests/sorted-indexer-0
 
 check: $(SIMPLE_TESTS)
 	@for t in $(SIMPLE_TESTS) ; do echo "*** Running $$t ***" 1>&2 ; ./$$t ; done
@@ -23,6 +23,7 @@ obj/bulp-format-optional.o \
 obj/bulp-format-union.o \
 obj/bulp-format.o \
 obj/bulp-rand.o \
+obj/bulp-compression.o \
 obj/bulp-readonly-index.o \
 obj/bulp-sorted-indexer.o \
 obj/bulp-namespace-toplevel-formats.o \
@@ -36,11 +37,7 @@ obj/bulp-utf.o
 
 bin/tests/%: src/tests/%.c lib/libbulp.a
 	@mkdir -p bin/tests
-	$(CC) -g -W -Wall -o $@ src/tests/$*.c -Llib -lbulp 
-
-bin/tests/%: src/tests/%.c lib/libbulp.a
-	@mkdir -p bin/tests
-	$(CC) -g -W -Wall -o $@ src/tests/$*.c -Llib -lbulp 
+	$(CC) $(CFLAGS) -o $@ src/tests/$*.c -L$(HOME)/brew/lib -Llib -lbulp  -lz -lsnappy
 
 src/bulp.generated.h: build/generate-bulp-machdep-config
 	./build/generate-bulp-machdep-config > src/bulp.generated.h

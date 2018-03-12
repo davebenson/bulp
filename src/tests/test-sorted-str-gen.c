@@ -20,9 +20,11 @@ void test_N (uint64_t N, uint64_t seed)
   
 int main()
 {
+  fprintf(stderr, "Running bulp_sorted_str_gen tests...\n");
   test_N(16, 50);
   test_N(1600000, 50);
   for (uint64_t s = 0; s < 50; s++)
     test_N(160000, s);
+  fprintf(stderr, "Done.\n");
   return 0;
 }
