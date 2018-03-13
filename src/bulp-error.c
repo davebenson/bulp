@@ -38,6 +38,14 @@ bulp_error_new_stat_failed (const char *filename,
                                             strerror (errno_value));
   return rv;
 }
+BulpError *bulp_error_new_file_seek (int errno_value)
+{
+  BulpError *rv = bulp_error_new_protected (BULP_ERROR_FILE_SEEK_FAILURE,
+                                            0, NULL,
+                                            "error seeking file: %s",
+                                            strerror (errno_value));
+  return rv;
+}
 BulpError *bulp_error_new_file_read (int errno_value)
 {
   BulpError *rv = bulp_error_new_protected (BULP_ERROR_FILE_READ_FAILURE,

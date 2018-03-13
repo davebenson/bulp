@@ -29,20 +29,8 @@ typedef enum BulpSortedIndexerResultType {
   BULP_SORTED_INDEXER_RESULT_ERROR
 } BulpSortedIndexerResultType;
 
-typedef struct {
-  BulpSortedIndexerResultType result_type;
-  union {
-    struct {
-      BulpReadonlyIndex *sorted_index;
-    } converted_to_index;
-    struct {
-      unsigned n_finishes;      // number of times you have called "finish"
-    } processing;
-    BulpError *error;
-  } info;
-} BulpSortedIndexerResult;
 
-BulpSortedIndexerResult
+BulpSortedIndexerResultType
 bulp_sorted_indexer_finish       (BulpSortedIndexer *indexer);
 
 

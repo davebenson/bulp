@@ -10,6 +10,8 @@ struct BulpSlab
 BULP_INLINE void     bulp_slab_init     (BulpSlab      *slab);
 BULP_INLINE uint8_t *bulp_slab_set_size (BulpSlab      *slab,
                                          size_t         size);
+BULP_INLINE void     bulp_slab_truncate (BulpSlab      *slab,
+                                         size_t         size);
 BULP_INLINE uint8_t *bulp_slab_set_data (BulpSlab      *slab,
                                          size_t         size,
                                          const uint8_t *data);
@@ -38,6 +40,12 @@ bulp_slab_set_size (BulpSlab *slab,
     }
   slab->length = size;
   return slab->data;
+}
+BULP_INLINE void     bulp_slab_truncate (BulpSlab      *slab,
+                                         size_t         size)
+{
+  BULP_INLINE_ASSERT(slab->length >= size);
+  slab->length = size;
 }
 BULP_INLINE uint8_t *
 bulp_slab_set_data (BulpSlab      *slab,

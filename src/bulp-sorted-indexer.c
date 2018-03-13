@@ -102,7 +102,6 @@ struct BulpSortedIndexer
 
   FinishStatus finish_status;
   unsigned finish_level;
-  uint64_t finish_level_at;
   BulpError *finish_error;
 };
 
@@ -158,7 +157,7 @@ bulp_sorted_indexer_new        (const char *base_filename,
   rv->finish_status = FINISH_NOT_STARTED;
 
 open_stats:
-  heap_fd = open (set_filename (rv, ".heap"), O_RDWR | O_CREAT | O_TRUNC);
+  heap_fd = open (set_filename (rv, ".heap"), O_RDWR | O_CREAT | O_TRUNC, 0666);
   if (heap_fd < 0)
     {
       if (errno == EINTR)
@@ -322,6 +321,7 @@ bulp_sorted_indexer_write      (BulpSortedIndexer *indexer,
   return BULP_TRUE;
 }
 
+#if 0
 static void
 handle_concat_done    (BulpHelperProcessResult result,
                        BulpError              *error,
@@ -352,53 +352,128 @@ handle_concat_done    (BulpHelperProcessResult result,
       return;
     }
 }
+#endif
 
-BulpSortedIndexerResult
-bulp_sorted_indexer_finish (BulpSortedIndexer *indexer)
+static BulpSortedIndexerResultType
+run_finish (BulpSortedIndexer *indexer)
 {
-  BulpSortedIndexerResult rv;
+  unsigned n_entries_moved = 0;
+  unsigned n_key_bytes_moved = 0;
+  unsigned level = indexer->finish_level;
+  unsigned n_levels = indexer->n_levels;
+  BulpError *error = NULL;
 
-  assert(indexer->finish_status == FINISH_NOT_STARTED);
-
-  /* close all file-descriptors */
-  close_all_fds (indexer);
-
-  /* is the total amount of data manageable?
-   * if so, write a placeholder, write the data, delete placeholder.
-   * if otherwise allocate a Job to do the work piecemeal.
-   */
-  assert(indexer->finish_status == FINISH_RUNNING);
-  if (indexer->n_levels < 4)
+  while (level < n_levels
+     &&  n_entries_moved < 8192
+     &&  n_key_bytes_moved < 1024*1024)
     {
-      BulpError *error = NULL;
-      if (!bulp_helper_foreground_concat_sorted_levels
-                      (NULL,
-                       indexer->filename_pad,
-                       indexer->n_levels,
-                       &error))
+      /* read index-entry */
+      BulpIndexEntry ie;
+      switch (bulp_util_readn (indexer->levels[level].index_fd, sizeof (BulpIndexEntry), &ie, &error))
         {
-          rv.result_type = BULP_SORTED_INDEXER_RESULT_ERROR;
-          rv.info.error = error;
+        case BULP_READ_RESULT_OK:
+          break;
+        case BULP_READ_RESULT_EOF:
+          // if eof advance to next level
+          // TO DECIDE: delete key/index file maybe-
+          close (indexer->levels[level].index_fd);
+          close (indexer->levels[level].key_heap_fd);
+          level++;
+          indexer->finish_level = level;
+          continue;             // restart loop
+
+        case BULP_READ_RESULT_ERROR:
           indexer->finish_status = FINISH_FAILED;
+          indexer->finish_error = error;
+          return BULP_SORTED_INDEXER_RESULT_ERROR;
         }
-      else
+      bulp_index_entry_from_little_endian (&ie);
+
+      /* update index-entry for new key-heap-offset */
+      uint32_t key_length = ie.key_length;
+      ie.key_offset = indexer->levels[0].key_heap_size;
+      indexer->levels[0].key_heap_size += key_length;
+
+      /* write index-entry */
+      bulp_index_entry_to_little_endian (&ie);
+      if (!bulp_util_writen (indexer->levels[0].index_fd, sizeof (BulpIndexEntry), &ie, &error))
         {
-          rv.result_type = BULP_SORTED_INDEXER_RESULT_GOT_INDEX;
-          indexer->finish_status = FINISH_DONE;
+          indexer->finish_status = FINISH_FAILED;
+          indexer->finish_error = error;
+          return BULP_SORTED_INDEXER_RESULT_ERROR;
         }
+
+      /* read key */
+      uint8_t* key_copy = bulp_slab_set_size (indexer->compressed_data, key_length);
+      switch (bulp_util_readn (indexer->levels[level].key_heap_fd, key_length, key_copy, &error))
+        {
+        case BULP_READ_RESULT_OK:
+          break;
+
+        case BULP_READ_RESULT_EOF:
+          indexer->finish_status = FINISH_FAILED;
+          indexer->finish_error = bulp_error_new_too_short ("missing key of length %u", key_length);
+          return BULP_SORTED_INDEXER_RESULT_ERROR;
+
+        case BULP_READ_RESULT_ERROR:
+          indexer->finish_status = FINISH_FAILED;
+          indexer->finish_error = error;
+          return BULP_SORTED_INDEXER_RESULT_ERROR;
+        }
+
+      /* write key */
+      if (!bulp_util_writen (indexer->levels[0].key_heap_fd, key_length, key_copy, &error))
+        {
+          indexer->finish_status = FINISH_FAILED;
+          indexer->finish_error = error;
+          return BULP_SORTED_INDEXER_RESULT_ERROR;
+        }
+
+      n_entries_moved++;
+      n_key_bytes_moved += key_length;
+    }
+
+  if (level == indexer->n_levels)
+    {
+      // TODO: schedule deletions
+      return BULP_SORTED_INDEXER_RESULT_GOT_INDEX;
     }
   else
     {
-      indexer->filename_pad[indexer->base_filename_len] = 0;
-      bulp_helper_process_concat_sorted_levels (NULL,
-          indexer->filename_pad, indexer->n_levels,
-          handle_concat_done,
-          indexer);
-      rv.result_type = BULP_SORTED_INDEXER_RESULT_RUNNING;
+      /* all the other state is in the levels array */
+      assert(level == indexer->finish_level);
+      return BULP_SORTED_INDEXER_RESULT_RUNNING;
     }
-  return rv;
 }
 
+BulpSortedIndexerResultType
+bulp_sorted_indexer_finish (BulpSortedIndexer *indexer)
+{
+  if (indexer->finish_status == FINISH_NOT_STARTED)
+    {
+      for (unsigned level = 1; level < indexer->n_levels; level++)
+        {
+          if (lseek (indexer->levels[level].key_heap_fd, 0, SEEK_SET) < 0
+           || lseek (indexer->levels[level].index_fd, 0, SEEK_SET) < 0)
+            {
+              indexer->finish_error = bulp_error_new_file_seek (errno);
+              return BULP_SORTED_INDEXER_RESULT_ERROR;
+            }
+          // TODO:  make readonly
+        }
+      indexer->finish_status = FINISH_RUNNING;
+      indexer->finish_level = 1;
+      if (indexer->finish_level == indexer->n_levels)
+        {
+          indexer->finish_status = FINISH_DONE;
+          return BULP_SORTED_INDEXER_RESULT_GOT_INDEX;
+        }
+    }
+  assert(indexer->finish_status == FINISH_RUNNING);
+  return run_finish (indexer);
+}
+
+#if 0
 static void
 handle_deletion_done (BulpHelperProcessResult result,
                       BulpError              *error,       // usually NULL
@@ -418,6 +493,7 @@ handle_deletion_done (BulpHelperProcessResult result,
   free (indexer->pre_compressed_data);
   free (indexer);
 }
+#endif
 
 void
 bulp_sorted_indexer_destroy (BulpSortedIndexer *indexer,
@@ -433,8 +509,11 @@ bulp_sorted_indexer_destroy (BulpSortedIndexer *indexer,
     {
       close_all_fds (indexer);
       indexer->filename_pad[indexer->base_filename_len] = 0;
-      bulp_helper_process_delete_sorted_index (NULL, indexer->filename_pad, indexer->n_levels,
-                                               handle_deletion_done, indexer);
+      // TODO delete all files
+      indexer->finish_status = FINISH_DESTROYED;
+      free (indexer->levels);
+      free (indexer->pre_compressed_data);
+      free (indexer);
     }
   else
     {

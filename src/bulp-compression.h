@@ -13,6 +13,12 @@ typedef struct {
 
 #define BULP_COMPRESSION_OPTIONS_INIT { BULP_COMPRESSION_ALGORITHM_SNAPPY, 5, 32 }
 
+#define BULP_COMPRESSION_OPTIONS_INIT_UNCOMPRESSED(rpc)                   \
+                { BULP_COMPRESSION_ALGORITHM_NONE, 0, (rpc) }
+#define BULP_COMPRESSION_OPTIONS_INIT_ZLIB(level, rpc)                    \
+                { BULP_COMPRESSION_ALGORITHM_ZLIB, (level), (rpc) }
+#define BULP_COMPRESSION_OPTIONS_INIT_SNAPPY(rpc)                  \
+                { BULP_COMPRESSION_ALGORITHM_SNAPPY, 5, (rpc) }
 
 bulp_bool bulp_decompress (BulpCompressionAlgorithm algo,
                            size_t                   compressed_length,

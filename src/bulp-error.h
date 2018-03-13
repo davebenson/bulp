@@ -11,6 +11,7 @@ typedef enum {
   BULP_ERROR_FILE_NOT_FOUND,
   BULP_ERROR_FILE_OPEN_FAILURE,
   BULP_ERROR_FILE_STAT_FAILURE,
+  BULP_ERROR_FILE_SEEK_FAILURE,
   BULP_ERROR_FILE_READ_FAILURE,
   BULP_ERROR_FILE_WRITE_FAILURE,
   BULP_ERROR_UNKNOWN_FORMAT,
@@ -44,6 +45,8 @@ BulpError * bulp_error_new_file_open_error (const char *filename, int errno_valu
 BulpError * bulp_error_new_stat_failed (const char *filename, int errno_value);
 BulpError * bulp_error_new_file_read (int errno_value);
 BulpError * bulp_error_new_file_write (int errno_value);
+BulpError * bulp_error_new_file_seek (int errno_value);
+
 BulpError *bulp_error_out_of_memory (void);
 BulpError *bulp_error_new_unexpected_character (uint8_t c, const char *filename, unsigned lineno);
 BulpError *bulp_error_new_premature_eof (const char *filename,
