@@ -27,6 +27,7 @@ obj/bulp-format-struct.o \
 obj/bulp-format-optional.o \
 obj/bulp-format-union.o \
 obj/bulp-format.o \
+obj/bulp-comparator.o \
 obj/bulp-rand.o \
 obj/bulp-compression.o \
 obj/bulp-readonly-index.o \

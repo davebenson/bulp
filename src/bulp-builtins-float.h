@@ -7,6 +7,9 @@ BULP_INLINE size_t bulp_float32_unpack          (size_t packed_len,
                                                  const uint8_t *packed_data,
                                                  float *out,
                                                  BulpError**error);
+BULP_INLINE size_t bulp_float32_unpack_unsafe   (const uint8_t *packed_data,
+                                                 float *out);
+
 
 BULP_INLINE size_t bulp_float64_get_packed_size (double v);
 BULP_INLINE size_t bulp_float64_pack            (double v,
@@ -17,6 +20,8 @@ BULP_INLINE size_t bulp_float64_unpack          (size_t packed_len,
                                                  const uint8_t *packed_data,
                                                  double *out,
                                                  BulpError**error);
+BULP_INLINE size_t bulp_float64_unpack_unsafe   (const uint8_t *packed_data,
+                                                 double *out);
 
 #if BULP_CAN_INLINE || defined(BULP_INTERNAL_IMPLEMENT_INLINE_FUNCTIONS)
 BULP_INLINE size_t
@@ -74,6 +79,20 @@ bulp_float32_unpack           (size_t packed_len,
   return 4;
 }
 
+BULP_INLINE size_t
+bulp_float32_unpack_unsafe    (const uint8_t *packed_data,
+                               float *out)
+{
+#if BULP_IS_LITTLE_ENDIAN
+  memcpy (out, packed_data, 4);
+#else
+  union { uint32_t i; float f; } u;
+  bulp_uint32_unpack_unsafe (packed_data, &u.i);
+  *out = u.f;
+#endif
+  return 4;
+}
+
 
 
 BULP_INLINE size_t
@@ -123,6 +142,19 @@ bulp_float64_unpack           (size_t packed_len,
   union { uint64_t i; double f; } u;
   if (bulp_uint64_unpack (packed_len, packed_data, &u.i, error) == 0)
     return 0;
+  *out = u.f;
+#endif
+  return 8;
+}
+BULP_INLINE size_t
+bulp_float64_unpack_unsafe    (const uint8_t *packed_data,
+                               double *out)
+{
+#if BULP_IS_LITTLE_ENDIAN
+  memcpy (out, packed_data, 8);
+#else
+  union { uint64_t i; double f; } u;
+  bulp_uint64_unpack_unsafe (packed_data, &u.i);
   *out = u.f;
 #endif
   return 8;

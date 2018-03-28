@@ -14,21 +14,6 @@ struct BulpMerger
   unsigned ref_count;
 };
 
-typedef struct BulpComparator BulpComparator;
-struct BulpComparator
-{
-  int  (*compare) (BulpComparator *comparator,
-                   size_t a_length,
-                   const uint8_t *a_data,
-                   size_t b_length,
-                   const uint8_t *b_data);
-  void (*destroy) (BulpMerger *merger);
-  BulpFormat *format;
-  unsigned ref_count;
-};
-BulpComparator *bulp_comparator_ref   (BulpComparator *);
-void            bulp_comparator_unref (BulpComparator *);
-
 
 typedef struct {
   uint64_t key_offset;

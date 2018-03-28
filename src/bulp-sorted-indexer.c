@@ -363,6 +363,7 @@ run_finish (BulpSortedIndexer *indexer)
   unsigned n_levels = indexer->n_levels;
   BulpError *error = NULL;
 
+  fprintf(stderr, "level=%u, n_levels=%u\n", level, n_levels);
   while (level < n_levels
      &&  n_entries_moved < 8192
      &&  n_key_bytes_moved < 1024*1024)
@@ -463,7 +464,7 @@ bulp_sorted_indexer_finish (BulpSortedIndexer *indexer)
         }
       indexer->finish_status = FINISH_RUNNING;
       indexer->finish_level = 1;
-      if (indexer->finish_level == indexer->n_levels)
+      if (indexer->finish_level >= indexer->n_levels)
         {
           indexer->finish_status = FINISH_DONE;
           return BULP_SORTED_INDEXER_RESULT_GOT_INDEX;

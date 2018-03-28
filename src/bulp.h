@@ -23,6 +23,7 @@ typedef struct BulpError BulpError;
 #include "bulp-compression.h"
 
 #include "bulp-format.h"      /* also includes namespace support */
+#include "bulp-comparator.h"
 
 #include "bulp-filter.h"
 #include "bulp-mapper.h"

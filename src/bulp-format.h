@@ -68,6 +68,7 @@ typedef struct {
 typedef struct {
   BulpFormatBase base;
   unsigned byte_size;       /* 1,2,4,8 */
+  unsigned log2_byte_size;  /* 0,1,2,3 */
   bulp_bool is_signed;
   bulp_bool is_b128;               /* variable-length encoded; otherwise, fixed-length little-endian */
 } BulpFormatInt;
