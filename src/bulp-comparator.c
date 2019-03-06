@@ -548,8 +548,72 @@ compare2__float__funcs[2] = {
   compare2__float32,
   compare2__float64,
 };
+
+
+static int
+compare__message (BulpComparator *comparator,
+                  const uint8_t *a_data,
+                  const uint8_t *b_data)
+{
+  BulpFormatStruct *s = &comparator->format->v_struct;
+  uint32_t a_code, b_code;
+  size_t a_lenlen = bulp_uint_unpack_unsafe (a_data, &a_code);
+  size_t b_lenlen = bulp_uint_unpack_unsafe (b_data, &b_code);
+  a_data += a_lenlen;
+  b_data += b_lenlen;
+  while (a_code != 0 && b_code != 0)
+    {
+      if (a_code < b_code)
+        {
+          // is a_value equal to null value?
+          uint32_t aval_len;
+          if (bulp_is_equal_to_default_unsafe (member_format,
+                                               a_value, &aval_len))
+            {
+              ...
+            }
+          else
+            {
+              /* a > 0, but b doesn't have this element, so a > b */
+              return 1;
+            }
+        }
+      else if (a_code > b_code)
+        {
+          // is b_value equal to null value?
+          uint32_t bval_len;
+          if (bulp_is_equal_to_default_unsafe (member_format,
+                                               b_value, &bval_len))
+            {
+              ...
+            }
+          else
+            {
+              /* b > 0, but a doesn't have this element, so a < b */
+              return -1;
+            }
+        }
+      else
+        {
+          BulpFormat *member_format = ...;
+          ...
+        }
+    }
+  ...
+  return 0;
+}
+
+static int
+compare2__message (BulpComparator *comparator,
+                   const uint8_t *a_data,
+                   const uint8_t *b_data,
+                   size_t *len_out)
+{
+  ...
+}
   
-BulpComparator *bulp_comparator_new_auto         (BulpFormat      *format)
+BulpComparator *
+bulp_comparator_new_auto (BulpFormat      *format)
 {
   switch (format->type)
     {
@@ -625,8 +689,9 @@ BulpComparator *bulp_comparator_new_auto         (BulpFormat      *format)
     case BULP_FORMAT_TYPE_STRUCT:
       if (format->v_struct.is_message)
         {
-          // NOTE: messages NOT recommended for keys
-          ...
+          return simple_comparator (format,
+                                    compare__message_func,
+                                    compare2__message_func);
         }
       else
         {

@@ -5,7 +5,9 @@ struct BulpIndexerOptions
 
   BulpComparator *comparator;
   BulpMerger *merger;
-  BulpFormat *key_value_format;                 // if not set, it'll be an anonymous struct of key+value
+
+  // if not set, it'll be an anonymous struct of key+value
+  BulpFormat *key_value_format;
 
   const char *prefix;
 };

@@ -18,7 +18,7 @@ typedef enum {
 typedef struct {
   bulp_bool (*validate_native) (BulpFormat *format,
                                 void *native_data,
-                                BulpError **error);                     // optional
+                                BulpError **error);        // optional
   size_t    (*get_packed_size) (BulpFormat *format,
                                 void *native_data);
   size_t    (*pack)            (BulpFormat *format,
@@ -46,10 +46,10 @@ typedef struct {
   const char *canonical_name;
 
   /* native (ie equivalent to generated C code) representation */
-  size_t c_alignof;
-  size_t c_sizeof;
-  bulp_bool copy_with_memcpy;
-  bulp_bool is_zeroable;
+  size_t      c_alignof;
+  size_t      c_sizeof;
+  bulp_bool   c_copy_with_memcpy;
+  bulp_bool   c_is_zeroable;
   const char *c_typename;               // mixed case - first letter capital
   const char *c_func_prefix;            // ie all lowercase with underscores
   const char *c_macro_prefix;           // ie all uppercase with underscores
@@ -58,10 +58,10 @@ typedef struct {
   BulpFormat *array_of;            // created on demand
 } BulpFormatBase;
 
-/* short int long
- * ushort uint ulong
- * int8 int16 int32 int64
- * uint8 uint16 uint32 uint64
+/* short int long                  // b128(zigzag_encode(N))
+ * ushort uint ulong               // b128(N)
+ * int8 int16 int32 int64          // le(N)
+ * uint8 uint16 uint32 uint64      // le(N)
  *
  * byte==uint8
  */
@@ -70,18 +70,23 @@ typedef struct {
   unsigned byte_size;       /* 1,2,4,8 */
   unsigned log2_byte_size;  /* 0,1,2,3 */
   bulp_bool is_signed;
-  bulp_bool is_b128;               /* variable-length encoded; otherwise, fixed-length little-endian */
+
+  /* If TRUE,  variable-length encoded little-endian;
+   * If FALSE, fixed-length little-endian */
+  bulp_bool is_b128;
 } BulpFormatInt;
 
 typedef enum
 {
   BULP_FLOAT_TYPE_FLOAT32,
   BULP_FLOAT_TYPE_FLOAT64,
+  BULP_FLOAT_TYPE_SPECIAL
 } BulpFloatType;
 
 typedef struct {
   BulpFormatBase base;
   BulpFloatType float_type;
+  ... revive mrad's parameterization
 } BulpFormatFloat;
 
 typedef struct {
@@ -132,15 +137,6 @@ unsigned bulp_packed_element_get_native   (BulpFormatPackedElement *elt,
 void     bulp_packed_element_set_native   (BulpFormatPackedElement *elt,
                                            void              *native_instance,
                                            unsigned           value);
-#if 0
-/* versioning?  i think we need to skip this */
-unsigned bulp_packed_element_get_packed (const void        *packed_data,
-                                                    BulpFormatPackedElement *elt);
-unsigned bulp_packed_element_set_packed       (void              *packed_data,
-                                        BulpFormatPackedElement *elt,
-                                        unsigned           value);
-#endif
-
 
 
 typedef struct BulpFormatPacked {
@@ -210,23 +206,6 @@ BulpFormatUnionCase *bulp_format_union_lookup_by_name  (BulpFormat *format,
                                                         ssize_t     name_len,
                                                         const char *name);
 
-#if 0
-typedef struct {
-  unsigned start_version;
-  unsigned end_version;
-} BulpVersionRange;
-
-
-typedef struct {
-  int n_ranges;
-  BulpVersionRange *ranges;
-  void *default_value;
-  bulp_bool ignored;
-} BulpMemberVersioningInfo;
-
-#define BULP_MEMBER_VERSIONING_INFO_INIT {0,NULL,NULL,BULP_FALSE}
-#endif
-
 typedef struct {
   const char *name;
   BulpFormat *format;
@@ -243,15 +222,13 @@ typedef struct {
   unsigned native_offset;
   void *native_default_value;
 } BulpFormatStructMember;
-#define BULP_STRUCT_MEMBER_IS_EXTANT(member) \
-  ((member)->versioning_info == NULL || !(member)->versioning_info->ignored)
 
 typedef struct BulpFormatStruct {
   BulpFormatBase base;
   size_t n_members;
   BulpFormatStructMember *members;
   BulpFormatStructMember **members_by_name;
-  bulp_bool is_message;                         // used to denote an extensible struct
+  bulp_bool is_extensible;
 } BulpFormatStruct;
 
 BulpFormatStructMember *
@@ -336,15 +313,17 @@ BulpFormat *bulp_format_optional_of      (BulpFormat *subtype);
 
 BulpFormat *bulp_format_new_enum         (unsigned n_values,
                                           BulpEnumValue *values);
-BulpFormat *bulp_format_new_struct       (unsigned n_members,
+BulpFormat *bulp_format_new_structure    (unsigned n_members,
                                           BulpStructMember *members,
                                           bulp_bool         is_message);
+BulpFormat *bulp_format_new_struct       (unsigned n_members,
+                                          BulpStructMember *members);
+BulpFormat *bulp_format_new_message      (unsigned n_members,
+                                          BulpStructMember *members);
+#define bulp_format_new_struct(n,m)      bulp_format_new_structure(n,m,0)
+#define bulp_format_new_message(n,m)     bulp_format_new_structure(n,m,1)
 BulpFormat *bulp_format_new_union        (unsigned n_cases,
                                           BulpUnionCase    *cases);
-#if 0
-BulpFormat *bulp_format_new_message      (unsigned n_fields,
-                                          BulpMessageField *fields);
-#endif
 
 BulpFormat *bulp_format_ref              (BulpFormat       *format);
 void        bulp_format_unref            (BulpFormat       *format);

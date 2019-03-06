@@ -13,13 +13,10 @@ typedef struct BulpReader BulpReader;
 
 struct BulpReaderClass {
   BulpClass base_class;
+  size_t sizeof_reader;
 
   // initial values
-  BulpReadResult (*peek) (BulpReader *reader,
-                          size_t *data_length_out,
-                          const uint8_t **data_out,
-                          BulpError **error);
-  BulpReadResult (*advance) (BulpReader *reader, BulpError **error);
+  BulpReaderState (*advance) (BulpReader *reader, BulpError **error);
 
   // optional
   BulpReaderCloseResult (*close) (BulpReader *reader, BulpError **error);
@@ -30,7 +27,11 @@ struct BulpReader {
   BulpObject base_instance;
   BulpFormat *reader_format;
 
-  BulpReadResult (*peek) (BulpReader *reader, size_t *data_length_out, const uint8_t **data_out, BulpError **error);
+  BulpReaderState reader_state;
+  size_t length;
+  const uint8_t *data;
+  BulpError *error;
+
   BulpReadResult (*advance) (BulpReader *reader, BulpError **error);
 
 };

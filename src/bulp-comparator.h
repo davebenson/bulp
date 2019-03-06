@@ -3,16 +3,16 @@ typedef struct BulpComparator BulpComparator;
 typedef int (*BulpComparatorCompare) (BulpComparator *comparator,
                                       const uint8_t  *a_data,
                                       const uint8_t  *b_data);
-typedef int (*BulpComparatorCompare2)(BulpComparator *comparator,
-                                      const uint8_t  *a_data,
-                                      const uint8_t  *b_data,
-                                      size_t         *len_out);
+typedef int (*BulpComparatorCompareAndGetLength)(BulpComparator *comparator,
+                                                 const uint8_t  *a_data,
+                                                 const uint8_t  *b_data,
+                                                 size_t         *len_out);
 typedef void (*BulpComparatorDestroy)(BulpComparator *comparator);
 
 struct BulpComparator
 {
   BulpComparatorCompare  compare;
-  BulpComparatorCompare2 compare2;
+  BulpComparatorCompareAndGetLength compare_and_get_length;
   BulpComparatorDestroy destroy;
   BulpFormat *format;
   unsigned ref_count;
@@ -32,7 +32,7 @@ BulpComparator *bulp_comparator_new (BulpFormat *format);
 BulpComparator *bulp_comparator_new_protected (size_t sizeof_comparator,
                                                BulpFormat *format,
                                                BulpComparatorCompare compare,
-                                               BulpComparatorCompare2 compare2,
+                                               BulpComparatorCompareAndGetLength compare_and_get_length,
                                                BulpComparatorDestroy destroy);
 
 // Call this at the end of your "destroy" method,

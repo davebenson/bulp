@@ -1,5 +1,5 @@
 
-typedef int bulp_bool;
+typedef uint8_t bulp_bool;
 #define BULP_FALSE 0
 #define BULP_TRUE  1
 
